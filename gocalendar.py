@@ -136,7 +136,7 @@ async def handle_message(message: Message):
                 summary = (url or text)[:30] + "..."  # первые 30 символов в заголовок
                 description = url or text
                 create_calendar_event(summary, description, dt)
-                # await message.reply(f"Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
+                await message.reply(f"Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
             except Exception as e:
                 logging.warning(f"Не удалось создать событие: {e}")
 
