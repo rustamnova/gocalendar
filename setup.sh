@@ -53,6 +53,7 @@ if [ ! -f "$PROJECT_DIR/gocalendar.py" ]; then
   exit 1
 fi
 
+
 # === Скрипт запуска бота ===
 cat <<'EOS' > start.sh
 #!/bin/bash
