@@ -55,6 +55,7 @@ EOS
 
 chmod +x start.sh
 
+
 # === 7. Запуск в screen ===
 echo "📺 Запускаем бота в screen-сессии..."
 screen -dmS gocalendar "$PROJECT_DIR/start.sh"
