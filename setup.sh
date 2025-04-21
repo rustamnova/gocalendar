@@ -9,7 +9,8 @@ cd ~
 rm -rf gocalendar
 
 # Клонировать свежую версию
-git clone https://github.com/rustamnova/gocalendar.git
+git clone https://<rustamnova>:<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>@github.com/rustamnova/gocalendar.git
+
 cd gocalendar
 
 # Обновить apt и установить зависимости для сборки Python пакетов
