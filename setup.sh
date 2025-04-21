@@ -9,6 +9,11 @@ GIT_REPO="gocalendar"
 CLONE_URL="https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git"
 PROJECT_DIR="$HOME/$GIT_REPO"
 
+# === 0. Установка screen и python-is-python3 (если не установлены) ===
+echo "📦 Проверка и установка утилит..."
+apt update
+apt install -y screen python-is-python3 build-essential python3-dev libffi-dev libssl-dev git
+
 # === 1. Очистка старой версии ===
 echo "🧹 Удаляем старую версию..."
 rm -rf "$PROJECT_DIR"
@@ -23,21 +28,16 @@ fi
 
 cd "$PROJECT_DIR" || exit 1
 
-# === 3. Установка системных зависимостей ===
-echo "🔧 Устанавливаем системные библиотеки..."
-apt update
-apt install -y build-essential python3-dev libffi-dev libssl-dev git
-
-# === 4. Виртуальное окружение ===
+# === 3. Виртуальное окружение ===
 echo "🐍 Создаем виртуальное окружение..."
 python3 -m venv venv
 source venv/bin/activate
 
-# === 5. Установка Python-зависимостей ===
+# === 4. Установка Python-зависимостей ===
 echo "📚 Устанавливаем зависимости..."
 pip install --upgrade pip
 
-# Устанавливаем зависимости по очереди, игнорируя ошибки aiohttp
+# Устанавливаем зависимости по одной, пропуская ошибки
 while IFS= read -r dep || [[ -n "$dep" ]]; do
   if [[ -n "$dep" ]]; then
     echo "➡ pip install $dep"
@@ -45,7 +45,7 @@ while IFS= read -r dep || [[ -n "$dep" ]]; do
   fi
 done < requirements.txt
 
-# === 6. Скрипт запуска бота ===
+# === 5. Скрипт запуска бота ===
 cat <<'EOS' > start.sh
 #!/bin/bash
 cd "$(dirname "$0")"
@@ -53,8 +53,13 @@ source venv/bin/activate
 python gocalendar.py
 EOS
 
+
+
 chmod +x start.sh
 
+# === 6. Завершение и удаление старых screen-сессий с тем же именем ===
+echo "🧹 Завершаем старые screen-сессии 'gocalendar'..."
+screen -ls | grep '\.gocalendar' | awk '{print $1}' | xargs -r -n 1 screen -S {} -X quit
 
 # === 7. Запуск в screen ===
 echo "📺 Запускаем бота в screen-сессии..."
