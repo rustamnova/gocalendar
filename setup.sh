@@ -62,6 +62,7 @@ touch log.txt
 python gocalendar.py >> log.txt 2>&1
 EOS
 
+
 chmod +x start.sh
 
 # === Завершение и удаление старых screen-сессий ===
