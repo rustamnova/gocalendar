@@ -60,6 +60,7 @@ EOS
 
 chmod +x start.sh
 
+
 # === 7. Завершение и удаление старых screen-сессий с тем же именем ===
 echo "🧹 Завершаем старые screen-сессии 'gocalendar'..."
 screen -ls | grep '\.gocalendar' | awk '{print $1}' | xargs -r -n 1 screen -S {} -X quit
