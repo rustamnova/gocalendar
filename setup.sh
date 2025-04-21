@@ -38,6 +38,7 @@ echo "📚 Устанавливаем зависимости..."
 pip install --upgrade pip
 
 # Устанавливаем зависимости по одной, пропуская ошибки
+
 while IFS= read -r dep || [[ -n "$dep" ]]; do
   if [[ -n "$dep" ]]; then
     echo "➡ pip install $dep"
