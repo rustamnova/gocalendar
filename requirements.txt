@@ -1,16 +1,9 @@
-# Основные зависимости
 requests
 beautifulsoup4
-
-# Библиотека Telegram-бота
 aiogram==2.25.2
-
-# Работа с Google Calendar API
 google-api-python-client
 google-auth
-
-# Парсинг дат
 python-dateutil
-
-# Для использования search.google()
 google
+openai
+aiohttp
