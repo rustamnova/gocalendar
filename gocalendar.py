@@ -97,7 +97,6 @@ def extract_urls_from_message(message: Message) -> list[str]:
     return urls
 
 
-
 def extract_date_from_page_or_message(text, url=None):
     try:
         page_text = ""
