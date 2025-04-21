@@ -75,8 +75,7 @@ def ask_gpt_for_date(text):
         temperature=0,
     )
 
-    gpt_reply = response.choices[0].message.content.strip()
-    logging.info(f"GPT ответ: {gpt_reply}")
+    gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
 
     try:
         return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
