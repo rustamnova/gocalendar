@@ -21,7 +21,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-cd "$PROJECT_DIR" || exit
+cd "$PROJECT_DIR" || exit 1
 
 # === 3. Установка системных зависимостей ===
 echo "🔧 Устанавливаем системные библиотеки..."
@@ -34,9 +34,16 @@ python3 -m venv venv
 source venv/bin/activate
 
 # === 5. Установка Python-зависимостей ===
-echo "📚 Устанавливаем зависимости из твоего requirements.txt..."
+echo "📚 Устанавливаем зависимости..."
 pip install --upgrade pip
-pip install -r requirements.txt
+
+# Устанавливаем зависимости по очереди, игнорируя ошибки aiohttp
+while IFS= read -r dep || [[ -n "$dep" ]]; do
+  if [[ -n "$dep" ]]; then
+    echo "➡ pip install $dep"
+    pip install "$dep" || echo "⚠️ Ошибка при установке $dep — пропускаем"
+  fi
+done < requirements.txt
 
 # === 6. Скрипт запуска бота ===
 cat <<'EOS' > start.sh
@@ -45,7 +52,6 @@ cd "$(dirname "$0")"
 source venv/bin/activate
 python gocalendar.py
 EOS
-
 
 chmod +x start.sh
 
