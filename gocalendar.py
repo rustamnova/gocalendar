@@ -82,7 +82,6 @@ def ask_gpt_for_date(text):
     except Exception as e:
         raise ValueError(f"Не удалось разобрать ответ GPT: {gpt_reply}") from e
 
-
 # --- Utils ---
 def extract_urls(text: str) -> list[str]:
     return re.findall(r'(https?://\S+)', text)
