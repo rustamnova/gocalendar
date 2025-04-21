@@ -34,23 +34,11 @@ python3 -m venv venv
 source venv/bin/activate
 
 # === 5. Установка Python-зависимостей ===
-echo "📚 Устанавливаем Python-библиотеки..."
-cat <<EOF > requirements.txt
-requests
-beautifulsoup4
-aiogram==2.25.2
-google-api-python-client
-google-auth
-python-dateutil
-google
-openai
-EOF
-
-
+echo "📚 Устанавливаем зависимости из твоего requirements.txt..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# === 6. Создаем startup.sh для screen-запуска ===
+# === 6. Скрипт запуска бота ===
 cat <<'EOS' > start.sh
 #!/bin/bash
 cd "$(dirname "$0")"
