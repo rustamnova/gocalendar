@@ -46,6 +46,7 @@ source venv/bin/activate
 python gocalendar.py
 EOS
 
+
 chmod +x start.sh
 
 # === 7. Запуск в screen ===
