@@ -44,7 +44,6 @@ google-auth
 python-dateutil
 google
 openai
-aiohttp
 EOF
 
 
