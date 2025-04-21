@@ -9,16 +9,19 @@ GIT_REPO="gocalendar"
 CLONE_URL="https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git"
 PROJECT_DIR="$HOME/$GIT_REPO"
 
-# === 0. Установка screen и python-is-python3 (если не установлены) ===
-echo "📦 Устанавливаем необходимые утилиты..."
+# === Установка Python 3.10 и утилит ===
+echo "📦 Устанавливаем зависимости и Python 3.10..."
 apt update
-apt install -y screen python-is-python3 build-essential python3-dev libffi-dev libssl-dev git
+apt install -y software-properties-common
+add-apt-repository -y ppa:deadsnakes/ppa
+apt update
+apt install -y python3.10 python3.10-venv python3.10-dev screen git build-essential libffi-dev libssl-dev python-is-python3
 
-# === 1. Очистка старой версии ===
+# === Очистка старой версии ===
 echo "🧹 Удаляем старую версию..."
 rm -rf "$PROJECT_DIR"
 
-# === 2. Клонирование ===
+# === Клонирование проекта ===
 echo "📦 Клонируем проект..."
 git clone "$CLONE_URL" "$PROJECT_DIR"
 if [ $? -ne 0 ]; then
@@ -28,12 +31,12 @@ fi
 
 cd "$PROJECT_DIR" || exit 1
 
-# === 3. Виртуальное окружение ===
-echo "🐍 Создаем виртуальное окружение..."
-python3 -m venv venv
+# === Виртуальное окружение ===
+echo "🐍 Создаем виртуальное окружение на Python 3.10..."
+python3.10 -m venv venv
 source venv/bin/activate
 
-# === 4. Установка Python-зависимостей ===
+# === Установка Python-зависимостей ===
 echo "📚 Устанавливаем зависимости..."
 pip install --upgrade pip
 
@@ -44,28 +47,28 @@ while IFS= read -r dep || [[ -n "$dep" ]]; do
   fi
 done < requirements.txt
 
-# === 5. Проверка на наличие скрипта бота ===
+# === Проверка наличия gocalendar.py ===
 if [ ! -f "$PROJECT_DIR/gocalendar.py" ]; then
   echo "❌ Файл gocalendar.py не найден в $PROJECT_DIR"
   exit 1
 fi
 
-# === 6. Скрипт запуска бота ===
+# === Скрипт запуска бота ===
 cat <<'EOS' > start.sh
 #!/bin/bash
 cd "$(dirname "$0")"
 source venv/bin/activate
+touch log.txt
 python gocalendar.py >> log.txt 2>&1
 EOS
 
 chmod +x start.sh
 
-
-# === 7. Завершение и удаление старых screen-сессий с тем же именем ===
+# === Завершение и удаление старых screen-сессий ===
 echo "🧹 Завершаем старые screen-сессии 'gocalendar'..."
-screen -ls | grep '\.gocalendar' | awk '{print $1}' | xargs -r -n 1 screen -S {} -X quit
+screen -ls | grep '\.gocalendar' | awk '{print $1}' | xargs -r -n 1 -I{} screen -S {} -X quit
 
-# === 8. Запуск в screen ===
+# === Запуск в screen ===
 echo "📺 Запускаем бота в screen-сессии..."
 screen -dmS gocalendar "$PROJECT_DIR/start.sh"
 
