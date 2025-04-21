@@ -56,31 +56,33 @@ creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPE
 calendar_service = build('calendar', 'v3', credentials=creds)
 
 # --- GPT-based date extraction ---
+from openai import OpenAI
+client = OpenAI(api_key=openai.api_key)
+
 def ask_gpt_for_date(text):
     prompt = (
-        "Проанализируй текст найди упоминания даты и время начала мероприятия в тексте поста и страницы:\n"
+        "Проанализируй текст. Найди дату и время начала мероприятия в тексте поста и страницы:\n"
         f"{text}\n\n"
-        "Если указано несколько дат, выбери первую."
-        "Если год не указан, используй 2025."
-        "Если время не указано — используй 16:00."
-        "Все даты, которые в виде текста преобразуй в формат ГГГГ-ММ-ДД ЧЧ:ММ."
+        "Если указано несколько дат, выбери первую.\n"
+        "Если год не указан, используй 2025.\n"
+        "Если время не указано — используй 12:00.\n"
         "Ответ верни строго в формате: ГГГГ-ММ-ДД ЧЧ:ММ."
-        "Пример: если написано 'число месяц словами' — верни '2025-MM-DD 16:00'"
     )
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0
+        temperature=0,
     )
 
-    gpt_reply = response["choices"][0]["message"]["content"].strip()
+    gpt_reply = response.choices[0].message.content.strip()
     logging.info(f"GPT ответ: {gpt_reply}")
 
     try:
         return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
     except Exception as e:
         raise ValueError(f"Не удалось разобрать ответ GPT: {gpt_reply}") from e
+
 
 # --- Utils ---
 def extract_urls(text: str) -> list[str]:
