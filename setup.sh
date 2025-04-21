@@ -50,9 +50,18 @@ EOF
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# === 6. Запуск в screen  ===
+# === 6. Создаем startup.sh для screen-запуска ===
+cat <<'EOS' > start.sh
+#!/bin/bash
+cd "$(dirname "$0")"
+source venv/bin/activate
+python gocalendar.py
+EOS
+
+chmod +x start.sh
+
+# === 7. Запуск в screen ===
 echo "📺 Запускаем бота в screen-сессии..."
-screen -dmS gocalendar bash -c "cd $PROJECT_DIR && source venv/bin/activate && python gocalendar.py"
+screen -dmS gocalendar "$PROJECT_DIR/start.sh"
 
 echo "✅ Бот запущен в screen. Чтобы войти: screen -r gocalendar"
-
