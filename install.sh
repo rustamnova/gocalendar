@@ -3,7 +3,7 @@
 echo "🚀 Начинаем установку бота GoCalendar..."
 
 # === Переменные ===
-GIT_TOKEN="GIT_TOKEN_REMOVED_2"
+GIT_TOKEN="GIT_TOKEN_REMOVED_1"
 GIT_USER="rustamnova"
 GIT_REPO="gocalendar"
 CLONE_URL="https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git"
