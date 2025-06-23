@@ -1,10 +1,10 @@
 #!/bin/bash
 
 cd "$(dirname "$0")"
-BOT_NAME="gocalendar"
+BOT_NAME=$(basename "$(pwd)")
 SESSION_NAME="$BOT_NAME"
 
-# Завершить старую screen-сессию, если она есть
+# Завершить, если уже есть
 if screen -list | grep -q "\\.${SESSION_NAME}"; then
   echo "🛑 Остановка screen-сессии $SESSION_NAME..."
   screen -S "$SESSION_NAME" -X quit

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd "$(dirname "$0")"
-BOT_NAME="gocalendar"
+BOT_NAME=$(basename "$(pwd)")
 SESSION_NAME="$BOT_NAME"
 
 if screen -list | grep -q "\\.${SESSION_NAME}"; then
