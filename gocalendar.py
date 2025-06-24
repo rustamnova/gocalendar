@@ -23,7 +23,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SERVICE_ACCOUNT_FILE = "credentials.json"
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
 
-# === Инициализация бота и логов ===
+# === Инициализация логов и бота ===
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
@@ -34,7 +34,7 @@ dp.include_router(router)
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/calendar"])
 calendar_service = build('calendar', 'v3', credentials=creds)
 
-# === OpenAI клиент ===
+# === Инициализация OpenAI ===
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 def ask_gpt_for_date(text):
