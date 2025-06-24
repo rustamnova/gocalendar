@@ -24,27 +24,109 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
 SERVICE_ACCOUNT_FILE = "credentials.json"
 
-# --- SAVE CREDS TO FILE ---
-creds_data = {
-    "type": "service_account",
-    "project_id": "REMOVED",
-    "private_key_id": "REMOVED",
-    "private_key": "PRIVATE_KEY_REMOVED",
-    "client_email": "REMOVED@REMOVED.iam.gserviceaccount.com",
-    "client_id": "REMOVED",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "REMOVED",
-    "universe_domain": "googleapis.com"
-}
-
-# Преобразуем \n в реальные переводы строк
-creds_data["private_key"] = creds_data["private_key"].replace("\\n", "\n")
-
+# === Проверка наличия файла credentials.json ===
 if not os.path.exists(SERVICE_ACCOUNT_FILE):
-    with open(SERVICE_ACCOUNT_FILE, "w") as f:
-        json.dump(creds_data, f)
-    print("✅ credentials.json создан из встроенных данных")
+    raise FileNotFoundError("❌ Не найден файл credentials.json в корне проекта")
 
-# Продолжай с остальной логикой бота...
+# === Проверка переменных ===
+print("BOT_TOKEN:", "OK" if BOT_TOKEN else "❌ MISSING")
+print("OPENAI_API_KEY:", "OK" if OPENAI_API_KEY else "❌ MISSING")
+print("CALENDAR_ID:", CALENDAR_ID)
+print("credentials.json exists:", os.path.exists(SERVICE_ACCOUNT_FILE))
+
+# === Инициализация логов и бота ===
+logging.basicConfig(level=logging.INFO)
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher(storage=MemoryStorage())
+router = Router()
+dp.include_router(router)
+
+# === Авторизация Google Calendar ===
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/calendar"])
+calendar_service = build('calendar', 'v3', credentials=creds)
+
+# === Инициализация OpenAI ===
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+def ask_gpt_for_date(text):
+    prompt = (
+        "Проанализируй текст. Найди дату и время начала мероприятия в тексте поста и страницы:\n"
+        f"{text}\n\n"
+        "Если указано несколько дат, выбери первую.\n"
+        "Если год не указан, используй 2025.\n"
+        "Если время не указано — используй 12:00.\n"
+        "Ответ верни строго в формате: ГГГГ-ММ-ДД ЧЧ:ММ."
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
+    )
+
+    gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
+    try:
+        return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
+    except Exception as e:
+        raise ValueError(f"Не удалось разобрать ответ GPT: {gpt_reply}") from e
+
+def extract_urls(text: str) -> list[str]:
+    return re.findall(r'(https?://\S+)', text)
+
+def extract_urls_from_message(message: Message) -> list[str]:
+    urls = extract_urls(message.text or message.caption or "")
+    entities = message.entities or message.caption_entities or []
+    for entity in entities:
+        if entity.type == "text_link":
+            urls.append(entity.url)
+    return urls
+
+def extract_date_from_page_or_message(text, url=None):
+    try:
+        page_text = ""
+        if url:
+            response = requests.get(url, timeout=10)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            page_text = soup.get_text(" ", strip=True)
+        combined_text = (text + "\n" + page_text).strip()
+        return ask_gpt_for_date(combined_text[:3500])
+    except Exception as e:
+        logging.warning(f"Ошибка при извлечении даты: {e}")
+    return None
+
+def create_calendar_event(summary, description, start_dt):
+    event = {
+        'summary': summary,
+        'description': description,
+        'start': {'dateTime': start_dt.isoformat(), 'timeZone': 'Europe/Moscow'},
+        'end': {'dateTime': (start_dt + timedelta(hours=1)).isoformat(), 'timeZone': 'Europe/Moscow'},
+    }
+    try:
+        calendar_service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        logging.info(f"✅ Событие добавлено: {summary} — {start_dt}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка добавления события: {e}")
+
+@router.message()
+async def handle_message(message: Message):
+    text = message.text or message.caption or ""
+    urls = extract_urls_from_message(message)
+
+    for url in urls if urls else [None]:
+        logging.info(f"Обработка ссылки: {url if url else '[без ссылки]'}")
+        dt = extract_date_from_page_or_message(text, url)
+        if dt:
+            try:
+                summary = (url or text)[:30] + "..."
+                description = url or text
+                create_calendar_event(summary, description, dt)
+                await message.reply(f"Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
+            except Exception as e:
+                logging.warning(f"Не удалось создать событие: {e}")
+
+async def main():
+    print("Бот запущен")
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+    asyncio.run(main())
