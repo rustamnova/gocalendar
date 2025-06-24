@@ -20,8 +20,11 @@ import asyncio
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-SERVICE_ACCOUNT_FILE = "credentials.json"
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
+SERVICE_ACCOUNT_FILE = "credentials.json"
+
+if not BOT_TOKEN or not OPENAI_API_KEY or not os.path.exists(SERVICE_ACCOUNT_FILE):
+    raise RuntimeError("❌ Не заданы переменные окружения или отсутствует файл credentials.json")
 
 # === Инициализация логов и бота ===
 logging.basicConfig(level=logging.INFO)
