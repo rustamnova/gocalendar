@@ -1,63 +1,41 @@
 import logging
 import re
-import json
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
 
-from aiogram import Bot, Dispatcher, F, types
+from aiogram import Bot, Dispatcher, Router
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
-from aiogram import Router
-from aiogram.filters import CommandStart
-from aiogram.utils.markdown import hbold
-from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject
-from aiogram import Bot, Dispatcher
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from openai import OpenAI
 import asyncio
-from dateutil import parser
-import openai
 
-# --- CONFIG ---
-BOT_TOKEN = "BOT_TOKEN_REMOVED"
-SCOPES = ["https://www.googleapis.com/auth/calendar"]
+# === Загрузка переменных окружения ===
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SERVICE_ACCOUNT_FILE = "credentials.json"
-CALENDAR_ID = "CALENDAR_ID_REMOVED@group.calendar.google.com"
-openai.api_key = "OPENAI_KEY_REMOVED"
+CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
 
-# --- SAVE CREDS TO FILE ---
-creds_data = {
-    "type": "service_account",
-    "project_id": "REMOVED",
-    "private_key_id": "REMOVED",
-    "private_key": "PRIVATE_KEY_REMOVED",
-    "client_email": "REMOVED@REMOVED.iam.gserviceaccount.com",
-    "client_id": "REMOVED",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "REMOVED",
-    "universe_domain": "googleapis.com"
-}
-
-# --- INIT ---
+# === Инициализация бота и логов ===
 logging.basicConfig(level=logging.INFO)
-
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+# === Авторизация Google Calendar ===
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/calendar"])
 calendar_service = build('calendar', 'v3', credentials=creds)
 
-# --- GPT-based date extraction ---
-from openai import OpenAI
-client = OpenAI(api_key=openai.api_key)
+# === OpenAI клиент ===
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def ask_gpt_for_date(text):
     prompt = (
@@ -76,13 +54,12 @@ def ask_gpt_for_date(text):
     )
 
     gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
-
     try:
         return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
     except Exception as e:
         raise ValueError(f"Не удалось разобрать ответ GPT: {gpt_reply}") from e
 
-# --- Utils ---
+# === Вспомогательные функции ===
 def extract_urls(text: str) -> list[str]:
     return re.findall(r'(https?://\S+)', text)
 
@@ -120,7 +97,7 @@ def create_calendar_event(summary, description, start_dt):
     except Exception as e:
         logging.error(f"❌ Ошибка добавления события: {e}")
 
-# --- Handler ---
+# === Обработчик сообщений ===
 @router.message()
 async def handle_message(message: Message):
     text = message.text or message.caption or ""
@@ -131,15 +108,14 @@ async def handle_message(message: Message):
         dt = extract_date_from_page_or_message(text, url)
         if dt:
             try:
-                summary = (url or text)[:30] + "..."  # первые 30 символов в заголовок
+                summary = (url or text)[:30] + "..."
                 description = url or text
                 create_calendar_event(summary, description, dt)
                 await message.reply(f"Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
             except Exception as e:
                 logging.warning(f"Не удалось создать событие: {e}")
 
-
-# --- Main ---
+# === Точка входа ===
 async def main():
     print("Бот запущен")
     await dp.start_polling(bot)
