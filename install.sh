@@ -21,65 +21,63 @@ fi
 REPO=$(echo "$REPO_URL" | sed -E 's|https://github.com/||;s|\.git$||')
 BOT_NAME=$(basename "$REPO")
 BOT_DIR="$WORKDIR/$BOT_NAME"
+LOG_DIR="$BOT_DIR/logs"
+INSTALL_LOG="$LOG_DIR/install.log"
 
-echo "🌐 Клонируем репозиторий $REPO_URL → $BOT_DIR"
+mkdir -p "$LOG_DIR"
+echo "[ $(date) ] 🚧 Установка $BOT_NAME" > "$INSTALL_LOG"
+
+echo "🌐 Клонируем репозиторий $REPO_URL → $BOT_DIR" | tee -a "$INSTALL_LOG"
 rm -rf "$BOT_DIR"
-git clone https://$GITHUB_TOKEN@github.com/$REPO.git "$BOT_DIR" || {
-  echo "❌ Ошибка клонирования"
+git clone https://$GITHUB_TOKEN@github.com/$REPO.git "$BOT_DIR" >> "$INSTALL_LOG" 2>&1 || {
+  echo "❌ Ошибка клонирования" | tee -a "$INSTALL_LOG"
   exit 1
 }
 
-# === Копирование .env ===
 cp "$ENV_TEMP" "$BOT_DIR/.env"
 rm "$ENV_TEMP"
-
-# === Переход в директорию и проверка основного .py файла ===
 cd "$BOT_DIR" || exit 1
+
 if [ ! -f "$BOT_NAME.py" ]; then
-  echo "❌ Не найден файл $BOT_NAME.py"
+  echo "❌ Не найден файл $BOT_NAME.py" | tee -a "$INSTALL_LOG"
   exit 1
 fi
 
-# === Установка системных пакетов ===
-echo "📦 Установка зависимостей..."
-apt update
-apt install -y python3.12 python3.12-venv python3.12-dev git screen ffmpeg build-essential
+echo "📦 Установка зависимостей..." | tee -a "$INSTALL_LOG"
+apt update >> "$INSTALL_LOG" 2>&1
+apt install -y python3.12 python3.12-venv python3.12-dev git screen ffmpeg build-essential >> "$INSTALL_LOG" 2>&1
 
-# === Виртуальное окружение ===
-echo "🐍 Настройка Python-окружения..."
+echo "🐍 Настройка Python-окружения..." | tee -a "$INSTALL_LOG"
 python3.12 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt || true
+pip install --upgrade pip >> "$INSTALL_LOG" 2>&1
+pip install -r requirements.txt >> "$INSTALL_LOG" 2>&1 || true
 
-# === Генерация start.sh ===
-echo "⚙️ Генерация start.sh..."
+echo "⚙️ Генерация start.sh..." | tee -a "$INSTALL_LOG"
 cat <<EOF > start.sh
 #!/bin/bash
 cd "\$(dirname "\$0")"
 source venv/bin/activate
-touch log.txt error.log
-echo "[\$(date)] ▶️ Запуск $BOT_NAME..." >> log.txt
-python $BOT_NAME.py >> log.txt 2>> error.log
+mkdir -p logs
+touch logs/run.log logs/error.log
+echo "[ \$(date) ] ▶️ Запуск \$BOT_NAME..." >> logs/run.log
+exec python $BOT_NAME.py >> logs/run.log 2>> logs/error.log
 EOF
-
 chmod +x start.sh
 
-# === Завершение старых screen-сессий ===
-echo "🧹 Завершаем старые screen-сессии: $BOT_NAME"
+echo "🧹 Завершаем старые screen-сессии: $BOT_NAME" | tee -a "$INSTALL_LOG"
 screen -ls | grep "\.${BOT_NAME}" | awk '{print $1}' | while read -r session_id; do
   screen -S "$session_id" -X quit
 done
 
-# === Запуск новой screen-сессии ===
-echo "📺 Запуск новой screen-сессии..."
+echo "📺 Запуск новой screen-сессии..." | tee -a "$INSTALL_LOG"
 screen -dmS "$BOT_NAME" "$BOT_DIR/start.sh"
 
 sleep 1
 if screen -list | grep -q "\.${BOT_NAME}"; then
-  echo "✅ Бот $BOT_NAME запущен в screen-сессии"
+  echo "✅ Бот $BOT_NAME запущен в screen-сессии" | tee -a "$INSTALL_LOG"
 else
-  echo "❌ Ошибка запуска screen-сессии"
+  echo "❌ Ошибка запуска screen-сессии" | tee -a "$INSTALL_LOG"
 fi
 
-echo "ℹ️ Подключиться: screen -r $BOT_NAME"
+echo "ℹ️ Подключиться: screen -r $BOT_NAME" | tee -a "$INSTALL_LOG"

@@ -1,0 +1,76 @@
+2025-06-28 12:30:16,071 [INFO] file_cache is only supported with oauth2client<4.0.0
+2025-06-28 12:30:16,090 [INFO] 🚀 Бот запущен
+2025-06-28 12:30:16,090 [INFO] Start polling
+2025-06-28 12:30:16,290 [INFO] Run polling for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-06-28 12:30:25,149 [INFO] Обработка сообщения. Ссылка: https://joniksalsa.ru/biserovo
+2025-06-28 12:30:28,381 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:30:31,076 [INFO] ✅ Событие добавлено: 🎉 *ОТКРЫТИЕ КЕМПИНГА JONIK_SAL... — 2025-06-28 12:00:00
+2025-06-28 12:30:31,373 [INFO] Update id=545564503 is handled. Duration 6224 ms by bot id=7679328847
+2025-06-28 12:31:38,361 [INFO] Обработка сообщения. Ссылка: https://centrezotov.ru/events/tanecz-kak-obekt-performans-konferencziya/
+2025-06-28 12:31:41,337 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:31:42,795 [INFO] ✅ Событие добавлено: Планы на выходные 27–29 июн
+
+✺... — 2025-06-27 19:00:00
+2025-06-28 12:31:42,892 [INFO] Update id=545564504 is handled. Duration 4530 ms by bot id=7679328847
+2025-06-28 12:32:47,411 [INFO] Обработка сообщения. Ссылка: https://instyle.zone/coffeerave2106
+2025-06-28 12:32:49,418 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:32:50,866 [INFO] ✅ Событие добавлено: Алексей, ближайшие мероприятия... — 2025-06-21 12:00:00
+2025-06-28 12:32:50,943 [INFO] Update id=545564505 is handled. Duration 3532 ms by bot id=7679328847
+2025-06-28 12:33:09,491 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:33:10,648 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:33:11,988 [INFO] ✅ Событие добавлено: Готовы ловить вайб? 
+
+В эту су... — 2025-06-28 15:00:00
+2025-06-28 12:33:12,071 [INFO] Update id=545564506 is handled. Duration 2580 ms by bot id=7679328847
+2025-06-28 12:35:12,456 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:35:13,947 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:13,948 [WARNING] Ошибка при извлечении даты: Не удалось разобрать ответ GPT: Из текста не видно информации о дате и времени начала мероприятия
+2025-06-28 12:35:13,948 [INFO] Дата не найдена
+2025-06-28 12:35:13,948 [INFO] Update id=545564507 is handled. Duration 1491 ms by bot id=7679328847
+2025-06-28 12:35:13,948 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:35:14,456 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:14,459 [WARNING] Не удалось создать событие: 'NoneType' object is not subscriptable
+2025-06-28 12:35:14,460 [INFO] Update id=545564508 is handled. Duration 511 ms by bot id=7679328847
+2025-06-28 12:35:14,460 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:35:15,283 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:16,704 [INFO] ✅ Событие добавлено: 13 июля в 16 в дизайнерском пр... — 2025-07-13 16:00:00
+2025-06-28 12:35:16,710 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:35:17,851 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:17,853 [WARNING] Ошибка при извлечении даты: Не удалось разобрать ответ GPT: Извините, я не могу просматривать посты или страницы. Пожалуйста, предоставьте мне текст, который вы хотите проанализировать
+2025-06-28 12:35:17,853 [INFO] Дата не найдена
+2025-06-28 12:35:17,853 [INFO] Update id=545564510 is handled. Duration 1148 ms by bot id=7679328847
+2025-06-28 12:35:17,854 [INFO] Обработка сообщения. Ссылка: https://estatemall.ru/novosti/piknik-ok/
+2025-06-28 12:35:19,427 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:20,854 [INFO] ✅ Событие добавлено: https://estatemall.ru/novosti/... — 2025-06-28 15:00:00
+2025-06-28 12:35:20,857 [INFO] Обработка сообщения. Ссылка: https://vidmk.ru/?utm_source=tg_post_anons
+2025-06-28 12:35:23,717 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:25,102 [INFO] ✅ Событие добавлено: https://vidmk.ru/?utm_source=t... — 2025-07-05 10:00:00
+2025-06-28 12:35:25,105 [INFO] Обработка сообщения. Ссылка: https://www.kp.ru/afisha/msk/prazdniki/vypusknoj-v-kremle/
+2025-06-28 12:35:27,789 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:35:29,139 [INFO] ✅ Событие добавлено: https://www.kp.ru/afisha/msk/p... — 2025-06-28 17:00:00
+2025-06-28 12:35:29,278 [INFO] Update id=545564509 is handled. Duration 14818 ms by bot id=7679328847
+2025-06-28 12:35:29,332 [INFO] Update id=545564512 is handled. Duration 8475 ms by bot id=7679328847
+2025-06-28 12:35:29,352 [INFO] Update id=545564511 is handled. Duration 11498 ms by bot id=7679328847
+2025-06-28 12:35:29,390 [INFO] Update id=545564513 is handled. Duration 4285 ms by bot id=7679328847
+2025-06-28 12:36:06,202 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:36:07,443 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:36:08,807 [INFO] ✅ Событие добавлено: 📍 Описание:
+С афиши видно след... — 2025-06-28 12:00:00
+2025-06-28 12:36:08,808 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:36:09,456 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:36:11,012 [INFO] ✅ Событие добавлено: 📍 Описание:
+На афише представл... — 2025-06-28 11:00:00
+2025-06-28 12:36:11,013 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:36:11,760 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:36:13,020 [INFO] ✅ Событие добавлено: 📍 Описание:
+На афише представл... — 2025-07-13 16:00:00
+2025-06-28 12:36:13,021 [INFO] Обработка сообщения. Ссылка: [без ссылки]
+2025-06-28 12:36:13,635 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-28 12:36:15,000 [INFO] ✅ Событие добавлено: 📍 Описание:
+Это афиша фестивал... — 2025-06-28 12:00:00
+2025-06-28 12:36:15,071 [INFO] Update id=545564514 is handled. Duration 8869 ms by bot id=7679328847
+2025-06-28 12:36:15,154 [INFO] Update id=545564515 is handled. Duration 6346 ms by bot id=7679328847
+2025-06-28 12:36:15,172 [INFO] Update id=545564516 is handled. Duration 4159 ms by bot id=7679328847
+2025-06-28 12:36:15,195 [INFO] Update id=545564517 is handled. Duration 2173 ms by bot id=7679328847
+2025-06-28 12:37:40,580 [INFO] Polling stopped
+2025-06-28 12:37:40,835 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
