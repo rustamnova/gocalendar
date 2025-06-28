@@ -149,7 +149,9 @@ async def handle_message(message: Message):
     if dt:
         try:
             summary = (text or url)[:30] + "..."
-            description = text or url
+            description = text
+            if url and url not in text:
+                description = f"🖼 Ссылка: {url}\n\n{text}"
             create_calendar_event(summary, description, dt)
             await message.reply(f"Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
         except Exception as e:
