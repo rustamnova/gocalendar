@@ -41,7 +41,7 @@ if not os.path.exists(SERVICE_ACCOUNT_FILE):
     raise FileNotFoundError("❌ Не найден файл credentials.json в корне проекта")
 
 # === Инициализация сервисов ===
-bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
@@ -158,7 +158,7 @@ async def handle_message(message: Message):
 # === Запуск ===
 async def main():
     logging.info("🚀 Gocalendar бот запущен")
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, allowed_updates=["message"])
 
 if __name__ == '__main__':
     asyncio.run(main())
