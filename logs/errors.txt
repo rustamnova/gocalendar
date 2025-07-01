@@ -163,3 +163,19 @@
 2025-07-01 12:23:04,228 [INFO] Update id=545564680 is handled. Duration 1505 ms by bot id=7679328847
 2025-07-01 12:23:06,746 [INFO] Polling stopped
 2025-07-01 12:23:07,003 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-07-01 12:31:51,307 [INFO] file_cache is only supported with oauth2client<4.0.0
+2025-07-01 12:31:51,310 [INFO] 🚀 Бот запущен
+2025-07-01 12:31:51,310 [INFO] Start polling
+2025-07-01 12:31:51,512 [INFO] Run polling for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-07-01 12:32:05,605 [INFO] 📩 ID отправителя: 163448423, Ссылка: [без ссылки]
+2025-07-01 12:32:06,054 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 403 Forbidden"
+2025-07-01 12:32:06,057 [WARNING] Ошибка при извлечении даты: Error code: 403 - {'error': {'code': 'unsupported_country_region_territory', 'message': 'Country, region, or territory not supported', 'param': None, 'type': 'request_forbidden'}}
+2025-07-01 12:32:06,058 [INFO] 📭 Дата не найдена
+2025-07-01 12:32:06,058 [INFO] Update id=545564687 is handled. Duration 452 ms by bot id=7679328847
+2025-07-01 12:32:25,187 [INFO] 📩 ID отправителя: 163448423, Ссылка: https://i.ibb.co/bMcmBpRQ/f5fdf1b8462f.jpg
+2025-07-01 12:32:27,500 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 403 Forbidden"
+2025-07-01 12:32:27,501 [WARNING] Ошибка при извлечении даты: Error code: 403 - {'error': {'code': 'unsupported_country_region_territory', 'message': 'Country, region, or territory not supported', 'param': None, 'type': 'request_forbidden'}}
+2025-07-01 12:32:27,501 [INFO] 📭 Дата не найдена
+2025-07-01 12:32:27,501 [INFO] Update id=545564688 is handled. Duration 2314 ms by bot id=7679328847
+2025-07-01 12:32:50,162 [INFO] Polling stopped
+2025-07-01 12:32:50,416 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
