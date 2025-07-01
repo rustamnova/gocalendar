@@ -41,7 +41,12 @@ if not os.path.exists(SERVICE_ACCOUNT_FILE):
     raise FileNotFoundError("❌ Не найден файл credentials.json в корне проекта")
 
 # === Инициализация сервисов ===
-bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+from aiogram.client.default import DefaultBotProperties
+
+bot = Bot(
+    token=BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
