@@ -29,18 +29,19 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-# === Загрузка переменных окружения ===
+# === Загрузка .env ===
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
 SERVICE_ACCOUNT_FILE = "credentials.json"
+ALLOWED_BOTS = set(map(int, os.getenv("USER_IDS", "").split(",")))
 
-# === Проверка наличия файла credentials.json ===
+# === Проверка credentials.json ===
 if not os.path.exists(SERVICE_ACCOUNT_FILE):
-    raise FileNotFoundError("❌ Не найден файл credentials.json в корне проекта")
+    raise FileNotFoundError("❌ Не найден файл credentials.json")
 
-# === Вывод статуса переменных ===
+# === Статус переменных ===
 print("BOT_TOKEN:", "OK" if BOT_TOKEN else "❌ MISSING")
 print("OPENAI_API_KEY:", "OK" if OPENAI_API_KEY else "❌ MISSING")
 print("CALENDAR_ID:", CALENDAR_ID)
@@ -66,7 +67,6 @@ def ask_gpt_for_date(text):
         "Если время не указано — используй 12:00.\n"
         "Ответ верни строго в формате: ГГГГ-ММ-ДД ЧЧ:ММ."
     )
-
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
@@ -124,7 +124,6 @@ def create_calendar_event(summary, description, start_dt):
     if event_already_exists(description):
         logging.info("⏭️ Событие уже существует, пропускаем.")
         return
-
     event = {
         'summary': summary,
         'description': description,
@@ -139,13 +138,21 @@ def create_calendar_event(summary, description, start_dt):
 
 @router.message()
 async def handle_message(message: Message):
+    user_id = message.from_user.id if message.from_user else None
+
+    if message.from_user and message.from_user.is_bot:
+        if user_id not in ALLOWED_BOTS:
+            logging.info(f"⛔ Игнорируем сообщение от чужого бота: {user_id}")
+            return
+        logging.info(f"✅ Принято сообщение от разрешённого бота: {user_id}")
+
     text = message.text or message.caption or ""
     urls = extract_urls_from_message(message)
-
-    # Обрабатываем текст один раз, с возможным дополнением страницы
     url = urls[0] if urls else None
+
     logging.info(f"Обработка сообщения. Ссылка: {url if url else '[без ссылки]'}")
     dt = extract_date_from_page_or_message(text, url)
+
     if dt:
         try:
             summary = (text or url)[:30] + "..."
@@ -157,7 +164,7 @@ async def handle_message(message: Message):
         except Exception as e:
             logging.warning(f"Не удалось создать событие: {e}")
     else:
-        logging.info("Дата не найдена")
+        logging.info("📭 Дата не найдена")
 
 async def main():
     logging.info("🚀 Бот запущен")
