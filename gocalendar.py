@@ -41,12 +41,7 @@ if not os.path.exists(SERVICE_ACCOUNT_FILE):
     raise FileNotFoundError("❌ Не найден файл credentials.json в корне проекта")
 
 # === Инициализация сервисов ===
-from aiogram.client.default import DefaultBotProperties
-
-bot = Bot(
-    token=BOT_TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
@@ -55,7 +50,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/calendar"])
 calendar_service = build('calendar', 'v3', credentials=creds)
 
-# === Обработка текста и даты ===
+# === Вспомогательные функции ===
 def ask_gpt_for_date(text):
     prompt = (
         "Проанализируй текст. Найди дату и время начала мероприятия в тексте поста и страницы:\n"
@@ -82,7 +77,7 @@ def extract_urls_from_message(message: Message) -> list[str]:
     for entity in entities:
         if entity.type == "text_link":
             urls.append(entity.url)
-    return urls
+    return list(set(urls))  # убрать дубликаты
 
 def extract_date_from_page_or_message(text, url=None):
     try:
@@ -103,7 +98,7 @@ def event_already_exists(description: str) -> bool:
         events_result = calendar_service.events().list(
             calendarId=CALENDAR_ID,
             timeMin=now,
-            maxResults=20,
+            maxResults=30,
             singleEvents=True,
             orderBy='startTime'
         ).execute()
@@ -135,7 +130,6 @@ def create_calendar_event(summary, description, start_dt):
 async def handle_message(message: Message):
     sender_id = message.from_user.id if message.from_user else None
     is_bot = message.from_user.is_bot if message.from_user else False
-
     logging.info(f"📩 Получено сообщение от {'бота' if is_bot else 'пользователя'} {sender_id}")
 
     if is_bot and sender_id not in BOT_WHITELIST:
@@ -144,15 +138,28 @@ async def handle_message(message: Message):
 
     text = message.text or message.caption or ""
     urls = extract_urls_from_message(message)
-    url = urls[0] if urls else None
 
+    # Ссылка для анализа GPT (берем первую), но в описание вставим все
+    url = urls[0] if urls else None
     logging.info(f"🔍 Начинаем анализ текста. URL: {url or '–'}")
 
     dt = extract_date_from_page_or_message(text, url)
     if dt:
         try:
             summary = (text or url)[:30] + "..."
-            description = f"🖼 Ссылка: {url}\n\n{text}" if url and url not in text else text
+            poster_link = next((u for u in urls if "ibb.co" in u or "imgbb" in u), None)
+            yandex_link = next((u for u in urls if "yandex.ru/search" in u), None)
+            other_links = [u for u in urls if u != poster_link and u != yandex_link]
+
+            link_block = ""
+            if poster_link:
+                link_block += f"\n\n🖼 Ссылка на афишу:\n{poster_link}"
+            if yandex_link:
+                link_block += f"\n\n🔎 Искать в Яндексе:\n{yandex_link}"
+            if other_links:
+                link_block += "\n\n🔗 Другие ссылки:\n" + "\n".join(other_links)
+
+            description = text + link_block
             create_calendar_event(summary, description, dt)
             await message.reply(f"📅 Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
         except Exception as e:

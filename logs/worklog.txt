@@ -92,3 +92,68 @@
 2025-07-01 14:00:50,171 [INFO] Update id=545564745 is handled. Duration 4322 ms by bot id=7679328847
 2025-07-01 14:01:00,677 [INFO] Polling stopped
 2025-07-01 14:01:00,938 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-07-01 22:41:22,176 [INFO] file_cache is only supported with oauth2client<4.0.0
+2025-07-01 22:41:22,191 [INFO] 🚀 Gocalendar бот запущен
+2025-07-01 22:41:22,191 [INFO] Start polling
+2025-07-01 22:41:22,403 [INFO] Run polling for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-07-01 22:41:49,272 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:41:49,272 [INFO] 🔍 Начинаем анализ текста. URL: https://i.ibb.co/k296gMLH/d635cefaeb39.jpg
+2025-07-01 22:41:52,595 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:41:55,267 [INFO] ✅ Добавлено событие: GORILLA ZIPPO
+
+Дата: 6 июля, в... — 2025-07-06 15:00:00
+2025-07-01 22:41:55,502 [INFO] Update id=545564766 is handled. Duration 6231 ms by bot id=7679328847
+2025-07-01 22:42:28,923 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:42:28,923 [INFO] 🔍 Начинаем анализ текста. URL: –
+2025-07-01 22:42:30,357 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:42:30,361 [ERROR] ❌ Ошибка при создании события: 'NoneType' object is not subscriptable
+2025-07-01 22:42:30,361 [INFO] Update id=545564767 is handled. Duration 1438 ms by bot id=7679328847
+2025-07-01 22:43:03,378 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:43:03,378 [INFO] 🔍 Начинаем анализ текста. URL: –
+2025-07-01 22:43:05,397 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:43:05,398 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Извините, я не могу просматривать посты или страницы. Если вы предоставите мне текст, я могу проанализировать его и найти дату и время начала мероприятия' does not match format '%Y-%m-%d %H:%M'
+2025-07-01 22:43:05,398 [INFO] 📭 Дата не найдена в сообщении.
+2025-07-01 22:43:05,398 [INFO] Update id=545564768 is handled. Duration 2020 ms by bot id=7679328847
+2025-07-01 22:44:50,290 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:44:50,290 [INFO] 🔍 Начинаем анализ текста. URL: https://i.ibb.co/Xf744XY6/3b2fcc574dad.jpg
+2025-07-01 22:44:52,521 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:44:54,077 [INFO] ✅ Добавлено событие: DIGITAL REGATTA
+
+Дата: 3 июля
+... — 2025-07-03 12:00:00
+2025-07-01 22:44:54,195 [INFO] Update id=545564769 is handled. Duration 3905 ms by bot id=7679328847
+2025-07-01 22:46:21,304 [INFO] Polling stopped
+2025-07-01 22:46:21,559 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-07-01 22:47:24,275 [INFO] file_cache is only supported with oauth2client<4.0.0
+2025-07-01 22:47:24,277 [INFO] 🚀 Gocalendar бот запущен
+2025-07-01 22:47:24,277 [INFO] Start polling
+2025-07-01 22:47:24,468 [INFO] Run polling for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2025-07-01 22:47:34,076 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:47:34,077 [INFO] 🔍 Начинаем анализ текста. URL: https://i.ibb.co/Xf744XY6/3b2fcc574dad.jpg
+2025-07-01 22:47:39,873 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:47:42,450 [INFO] ✅ Добавлено событие: DIGITAL REGATTA
+
+Дата: 3 июля
+... — 2025-07-03 12:00:00
+2025-07-01 22:47:42,662 [INFO] Update id=545564770 is handled. Duration 8586 ms by bot id=7679328847
+2025-07-01 22:48:15,815 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:48:15,815 [INFO] 🔍 Начинаем анализ текста. URL: –
+2025-07-01 22:48:18,249 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:48:18,250 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Извините, я не могу просматривать посты или страницы. Если вы предоставите мне текст, я могу проанализировать его и найти дату и время начала мероприятия' does not match format '%Y-%m-%d %H:%M'
+2025-07-01 22:48:18,250 [INFO] 📭 Дата не найдена в сообщении.
+2025-07-01 22:48:18,251 [INFO] Update id=545564771 is handled. Duration 2435 ms by bot id=7679328847
+2025-07-01 22:48:29,812 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:48:29,812 [INFO] 🔍 Начинаем анализ текста. URL: https://i.ibb.co/DP1mPKns/27aed57abfcd.jpg
+2025-07-01 22:48:33,405 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:48:34,800 [INFO] ✅ Добавлено событие: Ночной Сабантуй
+
+Дата: 5 июля ... — 2025-07-05 23:30:00
+2025-07-01 22:48:34,907 [INFO] Update id=545564772 is handled. Duration 5094 ms by bot id=7679328847
+2025-07-01 22:50:40,452 [INFO] 📩 Получено сообщение от пользователя 163448423
+2025-07-01 22:50:40,452 [INFO] 🔍 Начинаем анализ текста. URL: –
+2025-07-01 22:50:41,972 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-01 22:50:41,977 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Из текста поста не видно даты и времени начала мероприятия' does not match format '%Y-%m-%d %H:%M'
+2025-07-01 22:50:41,977 [INFO] 📭 Дата не найдена в сообщении.
+2025-07-01 22:50:41,977 [INFO] Update id=545564773 is handled. Duration 1525 ms by bot id=7679328847
+2025-07-01 22:50:48,974 [INFO] Polling stopped
+2025-07-01 22:50:49,233 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
