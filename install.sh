@@ -10,7 +10,7 @@ echo "📥 Вставьте .env файл (GITHUB_TOKEN, BOT_TOKEN, OPENAI_API_K
 ENV_TEMP=$(mktemp)
 cat > "$ENV_TEMP"
 source "$ENV_TEMP"
-
+#
 # === Проверка переменных ===
 if [[ -z "$GITHUB_TOKEN" || -z "$BOT_TOKEN" || -z "$REPO_URL" ]]; then
   echo "❌ Не заданы GITHUB_TOKEN, BOT_TOKEN или REPO_URL"
