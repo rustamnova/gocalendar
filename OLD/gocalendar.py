@@ -4,7 +4,6 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import os
-import json
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, Router
@@ -17,46 +16,41 @@ from googleapiclient.discovery import build
 from openai import OpenAI
 import asyncio
 
-# === Настройка логов ===
-os.makedirs("logs", exist_ok=True)
+# === Логирование ===
+os.makedirs("../logs", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     handlers=[
-        logging.FileHandler("logs/worklog.txt", mode="a", encoding="utf-8"),
-        logging.FileHandler("logs/errors.txt", mode="a", encoding="utf-8"),
+        logging.FileHandler("../logs/worklog.txt", mode="a", encoding="utf-8"),
+        logging.FileHandler("../logs/errors.txt", mode="a", encoding="utf-8"),
         logging.StreamHandler()
     ],
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-# === Загрузка переменных окружения ===
+# === Переменные окружения ===
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
-SERVICE_ACCOUNT_FILE = "credentials.json"
+SERVICE_ACCOUNT_FILE = "../credentials.json"
+BOT_WHITELIST = set(map(int, os.getenv("BOT_WHITELIST", "").split(",")))
 
-# === Проверка наличия файла credentials.json ===
+# === Проверка обязательных файлов ===
 if not os.path.exists(SERVICE_ACCOUNT_FILE):
     raise FileNotFoundError("❌ Не найден файл credentials.json в корне проекта")
 
-# === Вывод статуса переменных ===
-print("BOT_TOKEN:", "OK" if BOT_TOKEN else "❌ MISSING")
-print("OPENAI_API_KEY:", "OK" if OPENAI_API_KEY else "❌ MISSING")
-print("CALENDAR_ID:", CALENDAR_ID)
-print("credentials.json exists:", os.path.exists(SERVICE_ACCOUNT_FILE))
-
-# === Инициализация бота и OpenAI ===
+# === Инициализация сервисов ===
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# === Авторизация Google Calendar ===
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/calendar"])
 calendar_service = build('calendar', 'v3', credentials=creds)
 
+# === Вспомогательные функции ===
 def ask_gpt_for_date(text):
     prompt = (
         "Проанализируй текст. Найди дату и время начала мероприятия в тексте поста и страницы:\n"
@@ -66,17 +60,13 @@ def ask_gpt_for_date(text):
         "Если время не указано — используй 12:00.\n"
         "Ответ верни строго в формате: ГГГГ-ММ-ДД ЧЧ:ММ."
     )
-
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
     )
     gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
-    try:
-        return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
-    except Exception as e:
-        raise ValueError(f"Не удалось разобрать ответ GPT: {gpt_reply}") from e
+    return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
 
 def extract_urls(text: str) -> list[str]:
     return re.findall(r'(https?://\S+)', text)
@@ -87,7 +77,7 @@ def extract_urls_from_message(message: Message) -> list[str]:
     for entity in entities:
         if entity.type == "text_link":
             urls.append(entity.url)
-    return urls
+    return list(set(urls))  # убрать дубликаты
 
 def extract_date_from_page_or_message(text, url=None):
     try:
@@ -99,8 +89,8 @@ def extract_date_from_page_or_message(text, url=None):
         combined_text = (text + "\n" + page_text).strip()
         return ask_gpt_for_date(combined_text[:3500])
     except Exception as e:
-        logging.warning(f"Ошибка при извлечении даты: {e}")
-    return None
+        logging.warning(f"⚠️ Ошибка при извлечении даты: {e}")
+        return None
 
 def event_already_exists(description: str) -> bool:
     try:
@@ -108,23 +98,21 @@ def event_already_exists(description: str) -> bool:
         events_result = calendar_service.events().list(
             calendarId=CALENDAR_ID,
             timeMin=now,
-            maxResults=20,
+            maxResults=30,
             singleEvents=True,
             orderBy='startTime'
         ).execute()
-        events = events_result.get('items', [])
-        for event in events:
+        for event in events_result.get('items', []):
             if event.get("description", "").strip() == description.strip():
                 return True
     except Exception as e:
-        logging.error(f"Ошибка при проверке на дубликат: {e}")
+        logging.error(f"❌ Ошибка проверки дубликатов: {e}")
     return False
 
 def create_calendar_event(summary, description, start_dt):
     if event_already_exists(description):
-        logging.info("⏭️ Событие уже существует, пропускаем.")
+        logging.info("⏭️ Событие уже существует — пропускаем.")
         return
-
     event = {
         'summary': summary,
         'description': description,
@@ -133,35 +121,56 @@ def create_calendar_event(summary, description, start_dt):
     }
     try:
         calendar_service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        logging.info(f"✅ Событие добавлено: {summary} — {start_dt}")
+        logging.info(f"✅ Добавлено событие: {summary} — {start_dt}")
     except Exception as e:
-        logging.error(f"❌ Ошибка добавления события: {e}")
+        logging.error(f"❌ Ошибка при добавлении события: {e}")
 
+# === Хэндлер сообщений ===
 @router.message()
 async def handle_message(message: Message):
+    sender_id = message.from_user.id if message.from_user else None
+    is_bot = message.from_user.is_bot if message.from_user else False
+    logging.info(f"📩 Получено сообщение от {'бота' if is_bot else 'пользователя'} {sender_id}")
+
+    if is_bot and sender_id not in BOT_WHITELIST:
+        logging.info("🚫 Бот не в белом списке. Сообщение игнорируется.")
+        return
+
     text = message.text or message.caption or ""
     urls = extract_urls_from_message(message)
 
-    # Обрабатываем текст один раз, с возможным дополнением страницы
+    # Ссылка для анализа GPT (берем первую), но в описание вставим все
     url = urls[0] if urls else None
-    logging.info(f"Обработка сообщения. Ссылка: {url if url else '[без ссылки]'}")
+    logging.info(f"🔍 Начинаем анализ текста. URL: {url or '–'}")
+
     dt = extract_date_from_page_or_message(text, url)
     if dt:
         try:
             summary = (text or url)[:30] + "..."
-            description = text
-            if url and url not in text:
-                description = f"🖼 Ссылка: {url}\n\n{text}"
-            create_calendar_event(summary, description, dt)
-            await message.reply(f"Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
-        except Exception as e:
-            logging.warning(f"Не удалось создать событие: {e}")
-    else:
-        logging.info("Дата не найдена")
+            poster_link = next((u for u in urls if "ibb.co" in u or "imgbb" in u), None)
+            yandex_link = next((u for u in urls if "yandex.ru/search" in u), None)
+            other_links = [u for u in urls if u != poster_link and u != yandex_link]
 
+            link_block = ""
+            if poster_link:
+                link_block += f"\n\n🖼 Ссылка на афишу:\n{poster_link}"
+            if yandex_link:
+                link_block += f"\n\n🔎 Искать в Яндексе:\n{yandex_link}"
+            if other_links:
+                link_block += "\n\n🔗 Другие ссылки:\n" + "\n".join(other_links)
+
+            description = text + link_block
+            create_calendar_event(summary, description, dt)
+            await message.reply(f"📅 Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
+        except Exception as e:
+            logging.error(f"❌ Ошибка при создании события: {e}")
+    else:
+        logging.info("📭 Дата не найдена в сообщении.")
+
+# === Запуск ===
 async def main():
-    logging.info("🚀 Бот запущен")
-    await dp.start_polling(bot)
+    logging.info("🚀 Gocalendar бот запущен")
+    await dp.start_polling(bot, allowed_updates=["message"])
 
 if __name__ == '__main__':
     asyncio.run(main())

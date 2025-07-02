@@ -34,6 +34,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
 SERVICE_ACCOUNT_FILE = "credentials.json"
+USER_IDS = list(map(int, os.getenv("USER_IDS", "").split(",")))  # 👈 защита по ID
 BOT_WHITELIST = set(map(int, os.getenv("BOT_WHITELIST", "").split(",")))
 
 # === Проверка обязательных файлов ===
@@ -77,7 +78,7 @@ def extract_urls_from_message(message: Message) -> list[str]:
     for entity in entities:
         if entity.type == "text_link":
             urls.append(entity.url)
-    return list(set(urls))  # убрать дубликаты
+    return list(set(urls))  # удалить дубликаты
 
 def extract_date_from_page_or_message(text, url=None):
     try:
@@ -125,22 +126,22 @@ def create_calendar_event(summary, description, start_dt):
     except Exception as e:
         logging.error(f"❌ Ошибка при добавлении события: {e}")
 
-# === Хэндлер сообщений ===
+# === Обработка сообщений ===
 @router.message()
 async def handle_message(message: Message):
     sender_id = message.from_user.id if message.from_user else None
     is_bot = message.from_user.is_bot if message.from_user else False
+
     logging.info(f"📩 Получено сообщение от {'бота' if is_bot else 'пользователя'} {sender_id}")
 
-    if is_bot and sender_id not in BOT_WHITELIST:
-        logging.info("🚫 Бот не в белом списке. Сообщение игнорируется.")
+    if sender_id not in USER_IDS and (is_bot and sender_id not in BOT_WHITELIST):
+        logging.warning("⛔ Неавторизованный пользователь или бот. Игнорируем.")
         return
 
     text = message.text or message.caption or ""
     urls = extract_urls_from_message(message)
-
-    # Ссылка для анализа GPT (берем первую), но в описание вставим все
     url = urls[0] if urls else None
+
     logging.info(f"🔍 Начинаем анализ текста. URL: {url or '–'}")
 
     dt = extract_date_from_page_or_message(text, url)
@@ -149,7 +150,7 @@ async def handle_message(message: Message):
             summary = (text or url)[:30] + "..."
             poster_link = next((u for u in urls if "ibb.co" in u or "imgbb" in u), None)
             yandex_link = next((u for u in urls if "yandex.ru/search" in u), None)
-            other_links = [u for u in urls if u != poster_link and u != yandex_link]
+            other_links = [u for u in urls if u not in (poster_link, yandex_link)]
 
             link_block = ""
             if poster_link:
@@ -167,7 +168,7 @@ async def handle_message(message: Message):
     else:
         logging.info("📭 Дата не найдена в сообщении.")
 
-# === Запуск ===
+# === Запуск бота ===
 async def main():
     logging.info("🚀 Gocalendar бот запущен")
     await dp.start_polling(bot, allowed_updates=["message"])
