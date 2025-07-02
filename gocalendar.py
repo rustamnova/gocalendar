@@ -16,17 +16,26 @@ from googleapiclient.discovery import build
 from openai import OpenAI
 import asyncio
 
-# === Логирование ===
+# === Подготовка логов ===
 os.makedirs("logs", exist_ok=True)
+for log_name in ["worklog.txt", "errors.txt"]:
+    log_path = os.path.join("logs", log_name)
+    if os.path.exists(log_path):
+        os.remove(log_path)
+
+# === Настройка логирования ===
 logging.basicConfig(
     level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("logs/worklog.txt", mode="a", encoding="utf-8"),
-        logging.FileHandler("logs/errors.txt", mode="a", encoding="utf-8"),
+        logging.FileHandler("logs/worklog.txt", mode="w", encoding="utf-8"),
         logging.StreamHandler()
-    ],
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    ]
 )
+error_handler = logging.FileHandler("logs/errors.txt", mode="w", encoding="utf-8")
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+logging.getLogger().addHandler(error_handler)
 
 # === Переменные окружения ===
 load_dotenv()
@@ -34,8 +43,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
 SERVICE_ACCOUNT_FILE = "credentials.json"
-USER_IDS = list(map(int, os.getenv("USER_IDS", "").split(",")))  # 👈 защита по ID
-BOT_WHITELIST = set(map(int, os.getenv("BOT_WHITELIST", "").split(",")))
+USER_IDS = list(map(int, os.getenv("USER_IDS", "").split(",")))
 
 # === Проверка обязательных файлов ===
 if not os.path.exists(SERVICE_ACCOUNT_FILE):
@@ -78,7 +86,7 @@ def extract_urls_from_message(message: Message) -> list[str]:
     for entity in entities:
         if entity.type == "text_link":
             urls.append(entity.url)
-    return list(set(urls))  # удалить дубликаты
+    return list(set(urls))
 
 def extract_date_from_page_or_message(text, url=None):
     try:
@@ -134,8 +142,8 @@ async def handle_message(message: Message):
 
     logging.info(f"📩 Получено сообщение от {'бота' if is_bot else 'пользователя'} {sender_id}")
 
-    if sender_id not in USER_IDS and (is_bot and sender_id not in BOT_WHITELIST):
-        logging.warning("⛔ Неавторизованный пользователь или бот. Игнорируем.")
+    if sender_id not in USER_IDS:
+        logging.warning("⛔ Неавторизованный пользователь. Игнорируем.")
         return
 
     text = message.text or message.caption or ""
