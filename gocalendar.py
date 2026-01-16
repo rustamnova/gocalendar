@@ -60,22 +60,50 @@ creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["htt
 calendar_service = build('calendar', 'v3', credentials=creds)
 
 # === Вспомогательные функции ===
+import random
+from datetime import datetime, time
+
 def ask_gpt_for_date(text):
+    current_year = datetime.now().year
     prompt = (
-        "Проанализируй текст. Найди дату и время начала мероприятия в тексте поста и страницы:\n"
+        "Проанализируй текст. Найди дату начала мероприятия в тексте поста и страницы:\n"
         f"{text}\n\n"
-        "Если указано несколько дат, выбери первую.\n"
-        "Если год не указан, используй 2025.\n"
-        "Если время не указано — используй 12:00.\n"
-        "Ответ верни строго в формате: ГГГГ-ММ-ДД ЧЧ:ММ."
+        f"Если указано несколько дат, выбери первую.\n"
+        f"Если год не указан, используй {current_year}.\n"
+        "Игнорируй время — верни только дату.\n"
+        "Ответ верни строго в формате: ГГГГ-ММ-ДД"
     )
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
-    )
-    gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
-    return datetime.strptime(gpt_reply, "%Y-%m-%d %H:%M")
+
+    preferred_models = ["gpt-5.2", "gpt-5.1", "gpt-4.1", "gpt-4o", "gpt-3.5-turbo"]
+
+    for model_name in preferred_models:
+        try:
+            logging.info(f"🔍 Пробуем модель: {model_name}")
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
+
+            gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
+            date_part = datetime.strptime(gpt_reply, "%Y-%m-%d").date()
+
+            # 🎲 Случайное время от 03:00 до 23:00
+            hour = random.randint(3, 23)
+            minute = random.choice([0, 15, 30, 45])
+            random_time = time(hour=hour, minute=minute)
+
+            final_dt = datetime.combine(date_part, random_time)
+            logging.info(f"📅 Распознана дата: {final_dt}")
+            return final_dt
+
+        except Exception as e:
+            logging.warning(f"⚠️ Ошибка с моделью {model_name}: {e}")
+            continue
+
+    logging.error("❌ Не удалось распознать дату ни с одной моделью GPT.")
+    return None
+
 
 def extract_urls(text: str) -> list[str]:
     return re.findall(r'(https?://\S+)', text)
