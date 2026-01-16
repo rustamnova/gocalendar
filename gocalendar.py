@@ -131,7 +131,9 @@ def extract_date_from_page_or_message(text, url=None):
 
 def event_already_exists(description: str) -> bool:
     try:
-        now = datetime.utcnow().isoformat() + "Z"
+        from datetime import timezone
+        now = datetime.now(timezone.utc).isoformat()
+
         events_result = calendar_service.events().list(
             calendarId=CALENDAR_ID,
             timeMin=now,

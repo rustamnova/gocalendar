@@ -1,38 +1,13 @@
-2025-07-02 12:40:20,115 [INFO] file_cache is only supported with oauth2client<4.0.0
-2025-07-02 12:40:20,118 [INFO] 🚀 Gocalendar бот запущен
-2025-07-02 12:40:20,118 [INFO] Start polling
-2025-07-02 12:40:20,294 [INFO] Run polling for bot @gocalendar_bot id=7679328847 - 'gocalendar'
-2025-07-02 12:40:41,257 [INFO] 📩 Получено сообщение от пользователя 7251342872
-2025-07-02 12:40:41,258 [WARNING] ⛔ Неавторизованный пользователь. Игнорируем.
-2025-07-02 12:40:41,258 [INFO] Update id=545564870 is handled. Duration 0 ms by bot id=7679328847
-2025-07-02 12:41:01,697 [INFO] 📩 Получено сообщение от пользователя 696436004
-2025-07-02 12:41:01,698 [INFO] 🔍 Начинаем анализ текста. URL: –
-2025-07-02 12:41:04,391 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-07-02 12:41:04,412 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Извините, но я не могу проанализировать текст, так как вы не предоставили его. Пожалуйста, скопируйте текст с датой и временем начала мероприятия, и я помогу вам найти их' does not match format '%Y-%m-%d %H:%M'
-2025-07-02 12:41:04,412 [INFO] 📭 Дата не найдена в сообщении.
-2025-07-02 12:41:04,412 [INFO] Update id=545564871 is handled. Duration 2715 ms by bot id=7679328847
-2025-07-02 12:41:04,505 [INFO] 📩 Получено сообщение от пользователя 696436004
-2025-07-02 12:41:04,505 [INFO] 🔍 Начинаем анализ текста. URL: –
-2025-07-02 12:41:05,254 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-07-02 12:41:08,014 [INFO] ✅ Добавлено событие: ццуа... — 2025-07-15 09:00:00
-2025-07-02 12:41:08,244 [INFO] Update id=545564872 is handled. Duration 3740 ms by bot id=7679328847
-2025-07-02 12:41:27,255 [INFO] 📩 Получено сообщение от пользователя 6444493264
-2025-07-02 12:41:27,255 [INFO] 🔍 Начинаем анализ текста. URL: –
-2025-07-02 12:41:28,925 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-07-02 12:41:28,925 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Извините, я не могу просматривать внешние ресурсы, чтобы найти текст поста и страницы. Если вы предоставите мне текст, я могу помочь вам найти дату и время начала мероприятия в этом тексте' does not match format '%Y-%m-%d %H:%M'
-2025-07-02 12:41:28,925 [INFO] 📭 Дата не найдена в сообщении.
-2025-07-02 12:41:28,925 [INFO] Update id=545564873 is handled. Duration 1670 ms by bot id=7679328847
-2025-07-02 12:41:29,338 [INFO] 📩 Получено сообщение от пользователя 6444493264
-2025-07-02 12:41:29,339 [INFO] 🔍 Начинаем анализ текста. URL: –
-2025-07-02 12:41:30,813 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-07-02 12:41:30,815 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Извините, я не могу просматривать посты или страницы. Пожалуйста, скопируйте текст с указанием даты и времени начала мероприятия, и я помогу вам найти их' does not match format '%Y-%m-%d %H:%M'
-2025-07-02 12:41:30,815 [INFO] 📭 Дата не найдена в сообщении.
-2025-07-02 12:41:30,815 [INFO] Update id=545564874 is handled. Duration 1476 ms by bot id=7679328847
-2025-07-02 12:41:36,317 [INFO] 📩 Получено сообщение от пользователя 6444493264
-2025-07-02 12:41:36,317 [INFO] 🔍 Начинаем анализ текста. URL: –
-2025-07-02 12:41:38,218 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-07-02 12:41:38,219 [WARNING] ⚠️ Ошибка при извлечении даты: time data 'Извините, я не могу просматривать посты или страницы. Если вы предоставите мне текст, я могу попробовать найти дату и время начала мероприятия в нем' does not match format '%Y-%m-%d %H:%M'
-2025-07-02 12:41:38,219 [INFO] 📭 Дата не найдена в сообщении.
-2025-07-02 12:41:38,219 [INFO] Update id=545564875 is handled. Duration 1903 ms by bot id=7679328847
-2025-07-02 12:42:17,963 [INFO] Polling stopped
-2025-07-02 12:42:18,219 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2026-01-16 10:38:47,072 [INFO] file_cache is only supported with oauth2client<4.0.0
+2026-01-16 10:38:47,074 [INFO] 🚀 Gocalendar бот запущен
+2026-01-16 10:38:47,074 [INFO] Start polling
+2026-01-16 10:38:47,563 [INFO] Run polling for bot @gocalendar_bot id=7679328847 - 'gocalendar'
+2026-01-16 10:39:08,413 [INFO] 📩 Получено сообщение от пользователя 163448423
+2026-01-16 10:39:08,414 [INFO] 🔍 Начинаем анализ текста. URL: https://yandex.ru/search/?text=%D0%9C%D0%90%D0%A2%D0%A0%D0%98%D0%A6%D0%90.+RUSSIAN+CODE+%D0%B2+Community%0A%0A%D0%94%D0%B0%D1%82%D0%B0%3A+17.01%2C+%D1%81%D1%83%D0%B1%D0%B1%D0%BE%D1%82%D0%B0%0A%D0%92%D1%80%D0%B5%D0%BC%D1%8F%3A+21%3A00-23%3A30%0A%0A%D0%9C%D0%B5%D1%81%D1%82%D0%BE%3A+Winter+Garden%2C+%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%2C+%D0%9A%D0%BE%D1%81%D0%BC%D0%BE%D0%B4%D0%B0%D0%BC%D0%B8%D0%B0%D0%BD%D1%81%D0%BA%D0%B0%D1%8F+%D0%BD%D0%B0%D0%B1.%2C+2%0A%0A%D0%A4%D0%BE%D1%80%D0%BC%D0%B0%D1%82%3A+%D0%A2%D0%B0%D0%BD%D1%86%D0%B5%D0%B2%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%B5+%D0%BF%D1%80%D0%BE%D1%82%D0%B8%D0%B2%D0%BE%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%B8%D0%B5%2C+%D0%BA%D0%BE%D0%BD%D1%86%D0%B5%D0%BF%D1%86%D0%B8%D0%B8+%D0%BB%D0%BE%D0%BA%D0%B0%D1%86%D0%B8%D0%B9+%D0%B8+%D0%BC%D1%83%D0%B7%D1%8B%D0%BA%D0%B8%0A%0A%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA%D0%B8%3A+%D0%96%D0%B8%D1%82%D0%B5%D0%BB%D0%B8+Zion%27%D0%B0+%D0%B8+%D0%B0%D0%B3%D0%B5%D0%BD%D1%82%D1%8B+%D0%9C%D0%B0%D1%82%D1%80%D0%B8%D1%86%D1%8B%0A%0A%D0%94%D0%B5%D1%82%D0%B0%D0%BB%D0%B8%3A+%0A-+%D0%94%D1%80%D0%B5%D1%81%D1%81-%D0%BA%D0%BE%D0%B4%3A+%D1%82%D1%91%D0%BC%D0%BD%D1%8B%D0%B5+%D1%86%D0%B2%D0%B5%D1%82%D0%B0+%D0%B8+%D0%BE%D1%87%D0%BA%D0%B8%2C+%D0%BA%D0%BE%D0%B6%D0%B0+%D0%B8+%D0%BB%D0%B0%D1%82%D0%B5%D0%BA%D1%81%0A-+%D0%AD%D0%BB%D0%B5%D0%BC%D0%B5%D0%BD%D1%82%D1%8B+%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%BE%D0%B3%D0%BE+%D1%81%D1%82%D0%B8%D0%BB%D1%8F%0A-+%D0%9C%D0%B0%D1%80%D0%BA%D0%B5%D1%82+%D1%81+%D1%81%D0%B0%D0%BC%D1%83%D1%80%D0%B0%D0%B9%D1%81%D0%BA%D0%BE%D0%B9+%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%BE%D0%B9%0A%0A%D0%A1%D1%81%D1%8B%D0%BB%D0%BA%D0%B8%3A+%0A-+%D0%91%D0%B8%D0%BB%D0%B5%D1%82%D1%8B%3A+wowevent-project.ru%2Fmatrix_russiancode%0A%0A%D0%9F%D1%80%D0%B8%D1%81%D1%83%D1%82%D1%81%D1%82%D0%B2%D1%83%D0%B5%D1%82+%D0%BC%D1%83%D0%B7%D1%8B%D0%BA%D0%B0+%D0%B2+%D1%81%D1%82%D0%B8%D0%BB%D1%8F%D1%85+Downtempo%2C+Organic%2C+Melodic.%0A%0A%D0%9E%D1%81%D0%BE%D0%B1%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D1%8C%3A+%D0%92%D0%BE%D0%B7%D0%BC%D0%BE%D0%B6%D0%BD%D0%BE%D1%81%D1%82%D1%8C+%D0%B2%D1%8B%D0%B1%D1%80%D0%B0%D1%82%D1%8C+%D1%81%D1%82%D0%BE%D1%80%D0%BE%D0%BD%D1%83+%E2%80%93+%D0%B0%D0%B3%D0%B5%D0%BD%D1%82%D1%8B+%D0%9C%D0%B0%D1%82%D1%80%D0%B8%D1%86%D1%8B+%D0%B8%D0%BB%D0%B8+%D0%B6%D0%B8%D1%82%D0%B5%D0%BB%D0%B8+%D0%97%D0%B8%D0%BE%D0%BD%D0%B0.
+2026-01-16 10:39:09,181 [INFO] 🔍 Пробуем модель: gpt-5.2
+2026-01-16 10:39:10,420 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-16 10:39:10,431 [INFO] 📅 Распознана дата: 2026-01-17 17:30:00
+2026-01-16 10:39:12,710 [INFO] ✅ Добавлено событие: МАТРИЦА. RUSSIAN CODE в Commun... — 2026-01-17 17:30:00
+2026-01-16 10:39:12,960 [INFO] Update id=545567505 is handled. Duration 4546 ms by bot id=7679328847
+2026-01-16 10:39:55,603 [INFO] Polling stopped
+2026-01-16 10:39:55,855 [INFO] Polling stopped for bot @gocalendar_bot id=7679328847 - 'gocalendar'
