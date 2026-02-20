@@ -43,7 +43,7 @@ def log_install(msg: str):
         f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
 
 # === Переменные окружения ===
-load_dotenv()
+load_dotenv(override=True)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")
