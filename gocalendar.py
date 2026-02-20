@@ -18,24 +18,29 @@ import asyncio
 
 # === Подготовка логов ===
 os.makedirs("logs", exist_ok=True)
-for log_name in ["worklog.txt", "errors.txt"]:
-    log_path = os.path.join("logs", log_name)
-    if os.path.exists(log_path):
-        os.remove(log_path)
 
 # === Настройка логирования ===
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("logs/worklog.txt", mode="w", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
-)
-error_handler = logging.FileHandler("logs/errors.txt", mode="w", encoding="utf-8")
-error_handler.setLevel(logging.ERROR)
-error_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-logging.getLogger().addHandler(error_handler)
+import sys as _sys
+_fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+
+_worklog_handler = logging.FileHandler("logs/worklog.txt", mode="a", encoding="utf-8")
+_worklog_handler.setLevel(logging.INFO)
+_worklog_handler.setFormatter(_fmt)
+
+_error_handler = logging.FileHandler("logs/errors.txt", mode="a", encoding="utf-8")
+_error_handler.setLevel(logging.ERROR)
+_error_handler.setFormatter(_fmt)
+
+_console_handler = logging.StreamHandler(_sys.stdout)
+_console_handler.setLevel(logging.INFO)
+_console_handler.setFormatter(_fmt)
+
+logging.basicConfig(level=logging.INFO, handlers=[_worklog_handler, _error_handler, _console_handler])
+
+
+def log_install(msg: str):
+    with open("logs/install.txt", "a", encoding="utf-8") as f:
+        f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
 
 # === Переменные окружения ===
 load_dotenv()
@@ -208,8 +213,12 @@ async def handle_message(message: Message):
 
 # === Запуск бота ===
 async def main():
+    log_install(f"=== Запуск Gocalendar === (Python {_sys.version.split()[0]})")
     logging.info("🚀 Gocalendar бот запущен")
-    await dp.start_polling(bot, allowed_updates=["message"])
+    try:
+        await dp.start_polling(bot, allowed_updates=["message"])
+    finally:
+        log_install("=== Остановка Gocalendar ===")
 
 if __name__ == '__main__':
     asyncio.run(main())
