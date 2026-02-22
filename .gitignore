@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.log
+log.txt
+error.log
+logs/archive_*.gz
+
