@@ -97,7 +97,6 @@ def ask_gpt_for_date(text):
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0,
             )
 
             gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
