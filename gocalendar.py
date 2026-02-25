@@ -17,17 +17,26 @@ from openai import OpenAI
 import asyncio
 
 # === Подготовка логов ===
-os.makedirs("logs", exist_ok=True)
-
-# === Настройка логирования ===
 import sys as _sys
+from logging.handlers import RotatingFileHandler
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_LOGS_DIR = os.path.join(_BASE_DIR, "logs")
+os.makedirs(_LOGS_DIR, exist_ok=True)
+
 _fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 
-_worklog_handler = logging.FileHandler("logs/worklog.txt", mode="a", encoding="utf-8")
+# worklog.txt — рабочие процессы (INFO+), ротация 10 МБ × 5
+_worklog_handler = RotatingFileHandler(
+    os.path.join(_LOGS_DIR, "worklog.txt"), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+)
 _worklog_handler.setLevel(logging.INFO)
 _worklog_handler.setFormatter(_fmt)
 
-_error_handler = logging.FileHandler("logs/errors.txt", mode="a", encoding="utf-8")
+# errors.txt — только ошибки (ERROR+), ротация 5 МБ × 3
+_error_handler = RotatingFileHandler(
+    os.path.join(_LOGS_DIR, "errors.txt"), maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+)
 _error_handler.setLevel(logging.ERROR)
 _error_handler.setFormatter(_fmt)
 
@@ -39,7 +48,7 @@ logging.basicConfig(level=logging.INFO, handlers=[_worklog_handler, _error_handl
 
 
 def log_install(msg: str):
-    with open("logs/install.txt", "a", encoding="utf-8") as f:
+    with open(os.path.join(_LOGS_DIR, "install.txt"), "a", encoding="utf-8") as f:
         f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
 
 # === Переменные окружения ===
