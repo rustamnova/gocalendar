@@ -121,6 +121,28 @@ def extract_urls_from_message(message: Message) -> list[str]:
             urls.append(entity.url)
     return list(set(urls))
 
+def expand_links_in_text(text: str, entities) -> str:
+    """Вставляет URL прямо после текста каждой гиперссылки (text_link entity).
+    Telegram offsets работают в UTF-16 code units, поэтому используем encode('utf-16-le')."""
+    link_entities = [e for e in (entities or []) if e.type == "text_link"]
+    if not link_entities:
+        return text
+
+    encoded = text.encode("utf-16-le")
+    parts = []
+    prev = 0  # позиция в байтах UTF-16-LE
+
+    for entity in sorted(link_entities, key=lambda e: e.offset):
+        start = entity.offset * 2
+        end = (entity.offset + entity.length) * 2
+        parts.append(encoded[prev:start].decode("utf-16-le"))
+        parts.append(encoded[start:end].decode("utf-16-le"))
+        parts.append(f": {entity.url}")
+        prev = end
+
+    parts.append(encoded[prev:].decode("utf-16-le"))
+    return "".join(parts)
+
 def extract_date_from_page_or_message(text, url=None):
     try:
         page_text = ""
@@ -191,19 +213,8 @@ async def handle_message(message: Message):
     if dt:
         try:
             summary = (text or url)[:30] + "..."
-            poster_link = next((u for u in urls if "ibb.co" in u or "imgbb" in u), None)
-            yandex_link = next((u for u in urls if "yandex.ru/search" in u), None)
-            other_links = [u for u in urls if u not in (poster_link, yandex_link)]
-
-            link_block = ""
-            if poster_link:
-                link_block += f"\n\n🖼 Ссылка на афишу:\n{poster_link}"
-            if yandex_link:
-                link_block += f"\n\n🔎 Искать в Яндексе:\n{yandex_link}"
-            if other_links:
-                link_block += "\n\n🔗 Другие ссылки:\n" + "\n".join(other_links)
-
-            description = text + link_block
+            entities = message.entities or message.caption_entities or []
+            description = expand_links_in_text(text, entities)
             create_calendar_event(summary, description, dt)
             await message.reply(f"📅 Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
         except Exception as e:
