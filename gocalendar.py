@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, Router
+from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -200,6 +201,23 @@ def create_calendar_event(summary, description, start_dt):
     except Exception as e:
         logging.error(f"❌ Ошибка при добавлении события: {e}")
 
+# === Команда /start ===
+@router.message(CommandStart())
+async def cmd_start(message: Message):
+    sender_id = message.from_user.id if message.from_user else None
+    if sender_id not in USER_IDS:
+        logging.warning("⛔ Неавторизованный /start от %s", sender_id)
+        return
+    await message.answer(
+        "👋 Привет! Я GoCalendar — автоматически добавляю события в Google Календарь.\n\n"
+        "Что умею:\n"
+        "• Принять ссылку на анонс или текст с датой\n"
+        "• Распознать дату и название мероприятия\n"
+        "• Добавить событие в Google Календарь\n\n"
+        "Просто пришли ссылку или текст мероприятия 📅"
+    )
+
+
 # === Обработка сообщений ===
 @router.message()
 async def handle_message(message: Message):
@@ -218,25 +236,38 @@ async def handle_message(message: Message):
 
     logging.info(f"🔍 Начинаем анализ текста. URL: {url or '–'}")
 
+    status = await message.answer("🔍 Определяю дату мероприятия...")
+
     dt = extract_date_from_page_or_message(text, url)
     if dt:
         try:
+            await status.edit_text("📅 Добавляю событие в Google Календарь...")
             summary = (text or url)[:30] + "..."
             entities = message.entities or message.caption_entities or []
             description = expand_links_in_text(text, entities)
             create_calendar_event(summary, description, dt)
-            await message.reply(f"📅 Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
+            await status.edit_text(f"✅ Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
         except Exception as e:
             logging.error(f"❌ Ошибка при создании события: {e}")
+            await status.edit_text("❌ Ошибка при добавлении в календарь.")
     else:
+        await status.edit_text("📭 Не удалось определить дату мероприятия.")
         logging.info("📭 Дата не найдена в сообщении.")
 
 # === Запуск бота ===
+async def on_startup():
+    for uid in USER_IDS:
+        try:
+            await bot.send_message(uid, "✅ GoCalendar запущен! Пришли анонс или ссылку — добавлю в Google Календарь 📅")
+        except Exception:
+            pass
+
+
 async def main():
     log_install(f"=== Запуск Gocalendar === (Python {_sys.version.split()[0]})")
     logging.info("🚀 Gocalendar бот запущен")
     try:
-        await dp.start_polling(bot, allowed_updates=["message"])
+        await dp.start_polling(bot, allowed_updates=["message"], on_startup=on_startup)
     finally:
         log_install("=== Остановка Gocalendar ===")
 
