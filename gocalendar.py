@@ -2,20 +2,28 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, date as date_type
+from urllib.parse import quote_plus
 import os
 from dotenv import load_dotenv
 
-from aiogram import Bot, Dispatcher, Router
-from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram import Bot, Dispatcher, Router, F
+from aiogram.filters import CommandStart, Command
+from aiogram.types import (
+    Message, CallbackQuery,
+    InlineKeyboardMarkup, InlineKeyboardButton,
+    ReplyKeyboardMarkup, KeyboardButton, BotCommand
+)
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
+from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from openai import OpenAI
 import asyncio
+import random
+from datetime import time
 
 # === Подготовка логов ===
 import sys as _sys
@@ -27,14 +35,12 @@ os.makedirs(_LOGS_DIR, exist_ok=True)
 
 _fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 
-# worklog.txt — рабочие процессы (INFO+), ротация 10 МБ × 5
 _worklog_handler = RotatingFileHandler(
     os.path.join(_LOGS_DIR, "worklog.txt"), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
 )
 _worklog_handler.setLevel(logging.INFO)
 _worklog_handler.setFormatter(_fmt)
 
-# errors.txt — только ошибки (ERROR+), ротация 5 МБ × 3
 _error_handler = RotatingFileHandler(
     os.path.join(_LOGS_DIR, "errors.txt"), maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
 )
@@ -74,10 +80,150 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/calendar"])
 calendar_service = build('calendar', 'v3', credentials=creds)
 
-# === Вспомогательные функции ===
-import random
-from datetime import datetime, time
+# === Постоянная кнопка внизу чата ===
+MENU_BTN_TEXT = "📅 Главное меню"
 
+def main_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=MENU_BTN_TEXT)]],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
+# === Константы ===
+MONTHS_SHORT = ["янв", "фев", "мар", "апр", "май", "июн",
+                "июл", "авг", "сен", "окт", "ноя", "дек"]
+MONTHS_RU = ["января", "февраля", "марта", "апреля", "мая", "июня",
+             "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+DAYS_RU = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
+
+# === Простая клавиатура навигации (без списка событий — для /start и on_startup) ===
+def nav_keyboard(current_date: date_type) -> InlineKeyboardMarkup:
+    today = datetime.now().date()
+    prev_date = current_date - timedelta(days=1)
+    next_date = current_date + timedelta(days=1)
+
+    if current_date == today:
+        center_label = f"Сегодня, {today.day} {MONTHS_SHORT[today.month - 1]}"
+    else:
+        center_label = f"{current_date.day} {MONTHS_SHORT[current_date.month - 1]}"
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="◀", callback_data=f"events_nav:{prev_date}"),
+            InlineKeyboardButton(text=center_label, callback_data="events_today"),
+            InlineKeyboardButton(text="▶", callback_data=f"events_nav:{next_date}"),
+        ],
+        [
+            InlineKeyboardButton(text="🗓 Выбрать дату", callback_data="events_choose"),
+        ],
+    ])
+
+# === Google Calendar: запрос событий ===
+def get_events_for_date(target_date: date_type) -> list[dict]:
+    try:
+        tz = timezone(timedelta(hours=3))  # Europe/Moscow UTC+3
+        day_start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0, tzinfo=tz)
+        day_end = day_start + timedelta(days=1)
+
+        events_result = calendar_service.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=day_start.isoformat(),
+            timeMax=day_end.isoformat(),
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        return events_result.get('items', [])
+    except Exception as e:
+        logging.error(f"❌ Ошибка при получении событий: {e}")
+        return []
+
+# === Форматирование событий ===
+def event_button_label(event: dict) -> str:
+    """Название кнопки: summary или первая строка description."""
+    title = event.get('summary', '').strip()
+    if title:
+        return title[:60]
+    description = event.get('description', '')
+    first_line = description.strip().split('\n')[0][:60]
+    return first_line or 'Без названия'
+
+def format_event_detail(event: dict) -> str:
+    """Полный текст мероприятия для отдельного сообщения."""
+    title = event.get('summary', '').strip()
+    description = event.get('description', '').strip()
+    start = event.get('start', {})
+
+    lines = []
+    if title:
+        lines.append(f"<b>{title}</b>")
+    if 'dateTime' in start:
+        dt = datetime.fromisoformat(start['dateTime'])
+        lines.append(f"📅 {dt.strftime('%d.%m.%Y %H:%M')}")
+    elif 'date' in start:
+        lines.append(f"📅 {start['date']}")
+    if description:
+        lines.append("")
+        lines.append(description)
+
+    text = "\n".join(lines)
+    # Telegram limit 4096 chars
+    if len(text) > 4000:
+        text = text[:4000] + "\n…"
+    return text
+
+def format_events_header(events: list[dict], target_date: date_type) -> str:
+    weekday = DAYS_RU[target_date.weekday()]
+    month = MONTHS_RU[target_date.month - 1]
+    date_str = f"{target_date.day} {month} {target_date.year} ({weekday})"
+    if not events:
+        return f"📭 На <b>{date_str}</b> мероприятий нет."
+    count = len(events)
+    return f"📅 <b>Мероприятия на {date_str}</b> — {count} шт.\nНажми на название чтобы открыть подробности:"
+
+def events_keyboard_with_list(events: list[dict], target_date: date_type) -> InlineKeyboardMarkup:
+    today = datetime.now().date()
+    prev_date = target_date - timedelta(days=1)
+    next_date = target_date + timedelta(days=1)
+
+    if target_date == today:
+        center_label = f"Сегодня, {today.day} {MONTHS_SHORT[today.month - 1]}"
+    else:
+        center_label = f"{target_date.day} {MONTHS_SHORT[target_date.month - 1]}"
+
+    rows = []
+    for event in events:
+        label = event_button_label(event)
+        event_id = event.get('id', '')
+        rows.append([InlineKeyboardButton(text=label, callback_data=f"ev:{event_id}")])
+
+    rows.append([
+        InlineKeyboardButton(text="◀", callback_data=f"events_nav:{prev_date}"),
+        InlineKeyboardButton(text=center_label, callback_data="events_today"),
+        InlineKeyboardButton(text="▶", callback_data=f"events_nav:{next_date}"),
+    ])
+    rows.append([
+        InlineKeyboardButton(text="🗓 Выбрать дату", callback_data="events_choose"),
+        InlineKeyboardButton(text="📋 Все подробности", callback_data=f"ev_all:{target_date}"),
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+def get_event_by_id(event_id: str) -> dict | None:
+    try:
+        return calendar_service.events().get(calendarId=CALENDAR_ID, eventId=event_id).execute()
+    except Exception as e:
+        logging.error(f"❌ Ошибка получения события {event_id}: {e}")
+        return None
+
+# === Показ событий за дату ===
+async def show_events(target: date_type, edit_message: Message):
+    events = get_events_for_date(target)
+    text = format_events_header(events, target)
+    keyboard = events_keyboard_with_list(events, target)
+    await edit_message.edit_text(text, reply_markup=keyboard)
+
+# === GPT: определение даты ===
 def ask_gpt_for_date(text):
     current_year = datetime.now().year
     prompt = (
@@ -98,19 +244,14 @@ def ask_gpt_for_date(text):
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
             )
-
             gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
             date_part = datetime.strptime(gpt_reply, "%Y-%m-%d").date()
 
-            # 🎲 Случайное время от 03:00 до 23:00
             hour = random.randint(3, 23)
             minute = random.choice([0, 15, 30, 45])
-            random_time = time(hour=hour, minute=minute)
-
-            final_dt = datetime.combine(date_part, random_time)
+            final_dt = datetime.combine(date_part, time(hour=hour, minute=minute))
             logging.info(f"📅 Распознана дата: {final_dt}")
             return final_dt
-
         except Exception as e:
             logging.warning(f"⚠️ Ошибка с моделью {model_name}: {e}")
             continue
@@ -131,15 +272,13 @@ def extract_urls_from_message(message: Message) -> list[str]:
     return list(set(urls))
 
 def expand_links_in_text(text: str, entities) -> str:
-    """Вставляет URL прямо после текста каждой гиперссылки (text_link entity).
-    Telegram offsets работают в UTF-16 code units, поэтому используем encode('utf-16-le')."""
     link_entities = [e for e in (entities or []) if e.type == "text_link"]
     if not link_entities:
         return text
 
     encoded = text.encode("utf-16-le")
     parts = []
-    prev = 0  # позиция в байтах UTF-16-LE
+    prev = 0
 
     for entity in sorted(link_entities, key=lambda e: e.offset):
         start = entity.offset * 2
@@ -167,9 +306,7 @@ def extract_date_from_page_or_message(text, url=None):
 
 def event_already_exists(description: str) -> bool:
     try:
-        from datetime import timezone
         now = datetime.now(timezone.utc).isoformat()
-
         events_result = calendar_service.events().list(
             calendarId=CALENDAR_ID,
             timeMin=now,
@@ -200,24 +337,132 @@ def create_calendar_event(summary, description, start_dt):
     except Exception as e:
         logging.error(f"❌ Ошибка при добавлении события: {e}")
 
-# === Команда /start ===
+# === /start ===
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     sender_id = message.from_user.id if message.from_user else None
     if sender_id not in USER_IDS:
         logging.warning("⛔ Неавторизованный /start от %s", sender_id)
         return
+    today = datetime.now().date()
+    await message.answer(MENU_BTN_TEXT, reply_markup=main_menu_keyboard())
     await message.answer(
         "👋 Привет! Я GoCalendar — автоматически добавляю события в Google Календарь.\n\n"
         "Что умею:\n"
         "• Принять ссылку на анонс или текст с датой\n"
         "• Распознать дату и название мероприятия\n"
         "• Добавить событие в Google Календарь\n\n"
-        "Просто пришли ссылку или текст мероприятия 📅"
+        "Просто пришли ссылку или текст мероприятия 📅\n\n"
+        "Или посмотри мероприятия по дате:",
+        reply_markup=nav_keyboard(today)
     )
 
+# === /events ===
+@router.message(Command("events"))
+async def cmd_events(message: Message):
+    sender_id = message.from_user.id if message.from_user else None
+    if sender_id not in USER_IDS:
+        return
+    today = datetime.now().date()
+    await message.answer("📅 Выбери дату:", reply_markup=nav_keyboard(today))
 
-# === Обработка сообщений ===
+# === Кнопка центр (Сегодня) ===
+@router.callback_query(F.data == "events_today")
+async def cb_events_today(callback: CallbackQuery):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    await show_events(datetime.now().date(), callback.message)
+    await callback.answer()
+
+# === Кнопки ◀ / ▶ (навигация по дням) ===
+@router.callback_query(F.data.startswith("events_nav:"))
+async def cb_events_nav(callback: CallbackQuery):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    date_str = callback.data.split(":", 1)[1]
+    try:
+        target = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        await callback.answer("Некорректная дата")
+        return
+    await show_events(target, callback.message)
+    await callback.answer()
+
+# === Кнопка «Выбрать дату» — открыть календарь ===
+@router.callback_query(F.data == "events_choose")
+async def cb_events_choose(callback: CallbackQuery):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    now = datetime.now()
+    calendar_markup = await SimpleCalendar().start_calendar(year=now.year, month=now.month)
+    await callback.message.edit_text("🗓 Выбери дату:", reply_markup=calendar_markup)
+    await callback.answer()
+
+# === Выбор даты в inline-календаре ===
+@router.callback_query(SimpleCalendarCallback.filter())
+async def cb_calendar_selected(callback: CallbackQuery, callback_data: SimpleCalendarCallback):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    selected, selected_date = await SimpleCalendar().process_selection(callback, callback_data)
+    if selected:
+        await show_events(selected_date.date(), callback.message)
+    await callback.answer()
+
+# === Нажатие на кнопку мероприятия — показать полный текст ===
+@router.callback_query(F.data.startswith("ev:"))
+async def cb_event_detail(callback: CallbackQuery):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    event_id = callback.data[3:]
+    event = get_event_by_id(event_id)
+    if not event:
+        await callback.answer("Мероприятие не найдено", show_alert=True)
+        return
+    text = format_event_detail(event)
+    await callback.message.answer(text)
+    await callback.answer()
+
+# === Кнопка «Все подробности» — прислать каждое мероприятие отдельным постом ===
+@router.callback_query(F.data.startswith("ev_all:"))
+async def cb_event_all(callback: CallbackQuery):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    date_str = callback.data[7:]
+    try:
+        target = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        await callback.answer("Некорректная дата", show_alert=True)
+        return
+
+    events = get_events_for_date(target)
+    if not events:
+        await callback.answer("На эту дату мероприятий нет", show_alert=True)
+        return
+
+    await callback.answer(f"Отправляю {len(events)} мероприятий…")
+    for event in events:
+        text = format_event_detail(event)
+        await callback.message.answer(text)
+
+# === Нажатие постоянной кнопки «Главное меню» ===
+@router.message(F.text == MENU_BTN_TEXT)
+async def cmd_menu_button(message: Message):
+    sender_id = message.from_user.id if message.from_user else None
+    if sender_id not in USER_IDS:
+        return
+    today = datetime.now().date()
+    await message.answer(
+        "📅 Главное меню — выбери дату или пришли мероприятие:",
+        reply_markup=nav_keyboard(today)
+    )
+
+# === Обработка входящих сообщений (добавление мероприятий) ===
 @router.message()
 async def handle_message(message: Message):
     sender_id = message.from_user.id if message.from_user else None
@@ -245,7 +490,10 @@ async def handle_message(message: Message):
             entities = message.entities or message.caption_entities or []
             description = expand_links_in_text(text, entities)
             create_calendar_event(summary, description, dt)
-            await status.edit_text(f"✅ Добавлено в календарь: {dt.strftime('%d.%m.%Y %H:%M')}")
+            event_date = dt.date()
+            events = get_events_for_date(event_date)
+            header = f"✅ Добавлено в календарь: {dt.strftime('%d.%m.%Y')}\n\n" + format_events_header(events, event_date)
+            await status.edit_text(header, reply_markup=events_keyboard_with_list(events, event_date))
         except Exception as e:
             logging.error(f"❌ Ошибка при создании события: {e}")
             await status.edit_text("❌ Ошибка при добавлении в календарь.")
@@ -253,11 +501,21 @@ async def handle_message(message: Message):
         await status.edit_text("📭 Не удалось определить дату мероприятия.")
         logging.info("📭 Дата не найдена в сообщении.")
 
-# === Запуск бота ===
+# === Запуск ===
 async def on_startup():
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Главное меню"),
+        BotCommand(command="events", description="Мероприятия по дате"),
+    ])
+    today = datetime.now().date()
     for uid in USER_IDS:
         try:
-            await bot.send_message(uid, "✅ GoCalendar запущен! Пришли анонс или ссылку — добавлю в Google Календарь 📅")
+            await bot.send_message(
+                uid,
+                "✅ GoCalendar запущен! Пришли анонс или ссылку — добавлю в Google Календарь 📅\n\n"
+                "Или посмотри мероприятия по дате:",
+                reply_markup=main_menu_keyboard()
+            )
         except Exception:
             pass
 
@@ -266,7 +524,7 @@ async def main():
     log_install(f"=== Запуск Gocalendar === (Python {_sys.version.split()[0]})")
     logging.info("🚀 Gocalendar бот запущен")
     try:
-        await dp.start_polling(bot, allowed_updates=["message"], on_startup=on_startup)
+        await dp.start_polling(bot, allowed_updates=["message", "callback_query"], on_startup=on_startup)
     finally:
         log_install("=== Остановка Gocalendar ===")
 
