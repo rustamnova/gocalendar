@@ -372,7 +372,9 @@ async def cb_events_today(callback: CallbackQuery):
     if callback.from_user.id not in USER_IDS:
         await callback.answer()
         return
-    await show_events(datetime.now().date(), callback.message)
+    today = datetime.now().date()
+    logging.info(f"📊 Просмотр дат: {callback.from_user.id} → {today}")
+    await show_events(today, callback.message)
     await callback.answer()
 
 # === Кнопки ◀ / ▶ (навигация по дням) ===
@@ -387,6 +389,7 @@ async def cb_events_nav(callback: CallbackQuery):
     except ValueError:
         await callback.answer("Некорректная дата")
         return
+    logging.info(f"📊 Просмотр дат: {callback.from_user.id} → {target}")
     await show_events(target, callback.message)
     await callback.answer()
 
@@ -409,6 +412,7 @@ async def cb_calendar_selected(callback: CallbackQuery, callback_data: SimpleCal
         return
     selected, selected_date = await SimpleCalendar().process_selection(callback, callback_data)
     if selected:
+        logging.info(f"📊 Просмотр дат: {callback.from_user.id} → {selected_date.date()}")
         await show_events(selected_date.date(), callback.message)
     await callback.answer()
 
