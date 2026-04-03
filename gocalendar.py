@@ -260,6 +260,10 @@ def ask_gpt_for_date(text):
     return None
 
 
+def is_telegram_story_url(url: str) -> bool:
+    """Проверяет, является ли URL ссылкой на Telegram-статус (story)."""
+    return bool(re.search(r't\.me/[^/]+/s/\d+', url))
+
 def extract_urls(text: str) -> list[str]:
     return re.findall(r'(https?://\S+)', text)
 
@@ -478,9 +482,43 @@ async def handle_message(message: Message):
         logging.warning("⛔ Неавторизованный пользователь. Игнорируем.")
         return
 
+    # Telegram-статусы (stories): бот не может прочитать текст статуса напрямую
+    if message.story is not None:
+        logging.info("📖 Получен Telegram-статус (story) — текст недоступен через Bot API")
+        await message.answer(
+            "📖 Это Telegram-статус — бот не может прочитать его текст напрямую.\n\n"
+            "Скопируй текст статуса и пришли его сюда — добавлю мероприятие в календарь 📅"
+        )
+        return
+
     text = message.text or message.caption or ""
     urls = extract_urls_from_message(message)
     url = urls[0] if urls else None
+
+    # Нет ни текста, ни ссылки — нечего анализировать
+    if not text and not url:
+        await message.answer(
+            "📭 Пришли текст анонса или ссылку на мероприятие — добавлю в Google Календарь 📅"
+        )
+        return
+
+    # Ссылка на Telegram-статус (story): страница не отдаёт текст
+    if url and is_telegram_story_url(url):
+        # Удаляем ссылку из текста, смотрим есть ли что-то ещё
+        text_without_url = text.replace(url, "").strip()
+        if text_without_url:
+            # Есть текст помимо ссылки — используем его, URL не фетчим
+            logging.info(f"📖 Telegram story URL + текст — используем текст без фетча")
+            url = None
+            text = text_without_url
+        else:
+            # Только ссылка — текст статуса недоступен через Bot API
+            logging.info(f"📖 Telegram story URL без текста — просим скопировать")
+            await message.answer(
+                "📖 Ссылка на Telegram-статус — бот не может прочитать его содержимое автоматически.\n\n"
+                "Скопируй текст статуса и пришли его сюда (можно вместе со ссылкой) — добавлю в календарь 📅"
+            )
+            return
 
     logging.info(f"🔍 Начинаем анализ текста. URL: {url or '–'}")
 
@@ -490,7 +528,8 @@ async def handle_message(message: Message):
     if dt:
         try:
             await status.edit_text("📅 Добавляю событие в Google Календарь...")
-            summary = (text or url)[:30] + "..."
+            summary_source = text or url or ""
+            summary = (summary_source[:60] + "...") if len(summary_source) > 60 else summary_source
             entities = message.entities or message.caption_entities or []
             description = expand_links_in_text(text, entities)
             create_calendar_event(summary, description, dt)
