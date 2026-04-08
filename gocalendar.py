@@ -1,5 +1,6 @@
 import logging
 import re
+import json
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone, date as date_type
@@ -8,13 +9,15 @@ import os
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, Router, F
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.types import (
     Message, CallbackQuery,
     InlineKeyboardMarkup, InlineKeyboardButton,
     ReplyKeyboardMarkup, KeyboardButton, BotCommand
 )
 from aiogram.enums import ParseMode
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
@@ -97,6 +100,20 @@ MONTHS_RU = ["января", "февраля", "марта", "апреля", "м
              "июля", "августа", "сентября", "октября", "ноября", "декабря"]
 DAYS_RU = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
 
+MONTHS_MAP = {
+    "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
+    "мая": 5, "июня": 6, "июля": 7, "августа": 8,
+    "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 11, "december": 12,
+}
+
+# === FSM ===
+class ConfirmEventState(StatesGroup):
+    confirming = State()
+    choosing_date = State()
+
 # === Простая клавиатура навигации (без списка событий — для /start и on_startup) ===
 def nav_keyboard(current_date: date_type) -> InlineKeyboardMarkup:
     today = datetime.now().date()
@@ -116,6 +133,17 @@ def nav_keyboard(current_date: date_type) -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="🗓 Выбрать дату", callback_data="events_choose"),
+        ],
+    ])
+
+def confirm_event_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Добавить", callback_data="confirm_event:yes"),
+            InlineKeyboardButton(text="📅 Изменить дату", callback_data="confirm_event:change_date"),
+        ],
+        [
+            InlineKeyboardButton(text="❌ Отмена", callback_data="confirm_event:cancel"),
         ],
     ])
 
@@ -223,19 +251,92 @@ async def show_events(target: date_type, edit_message: Message):
     keyboard = events_keyboard_with_list(events, target)
     await edit_message.edit_text(text, reply_markup=keyboard)
 
+
+# === Извлечение дат регулярными выражениями ===
+def extract_date_candidates(text: str) -> list[str]:
+    """
+    Ищет потенциальные даты в тексте. Возвращает список строк вида DD.MM.YYYY.
+    Формат DD.MM трактуется как день.месяц (не месяц.день).
+    """
+    today = datetime.now().date()
+    candidates = []
+    seen = set()
+
+    def add(d, mo, y):
+        try:
+            candidate = date_type(y, mo, d)
+            key = candidate.isoformat()
+            if key not in seen:
+                seen.add(key)
+                candidates.append(f"{d:02d}.{mo:02d}.{y}")
+        except ValueError:
+            pass
+
+    # DD.MM.YYYY — полная дата
+    for m in re.finditer(r'\b(\d{1,2})\.(\d{2})\.(\d{4})\b', text):
+        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= mo <= 12 and 1 <= d <= 31:
+            add(d, mo, y)
+
+    # DD.MM без года — трактуем как день.месяц текущего или следующего года
+    # (?!\.\d{4}) — не матчим если это часть полной даты DD.MM.YYYY
+    for m in re.finditer(r'\b(\d{1,2})\.(\d{2})\b(?!\.\d{4})', text):
+        d, mo = int(m.group(1)), int(m.group(2))
+        if 1 <= mo <= 12 and 1 <= d <= 31:
+            y = today.year
+            try:
+                candidate = date_type(y, mo, d)
+                if candidate < today - timedelta(days=14):
+                    y += 1
+                add(d, mo, y)
+            except ValueError:
+                pass
+
+    # DD месяц YYYY или DD месяц
+    month_pattern = "|".join(MONTHS_MAP.keys())
+    for m in re.finditer(
+        rf"\b(\d{{1,2}})\s+({month_pattern})(?:\s+(\d{{4}}))?\b",
+        text, re.IGNORECASE
+    ):
+        d = int(m.group(1))
+        mo = MONTHS_MAP[m.group(2).lower()]
+        y = int(m.group(3)) if m.group(3) else today.year
+        try:
+            candidate = date_type(y, mo, d)
+            if not m.group(3) and candidate < today - timedelta(days=14):
+                y += 1
+            add(d, mo, y)
+        except ValueError:
+            pass
+
+    return candidates
+
+
 # === GPT: определение даты ===
-def ask_gpt_for_date(text):
+def ask_gpt_for_date(text: str, candidates: list[str] | None = None) -> datetime | None:
     current_year = datetime.now().year
+
+    candidates_hint = ""
+    if candidates:
+        candidates_hint = (
+            f"\n\nРегулярными выражениями найдены возможные даты (формат ДД.ММ.ГГГГ): "
+            f"{', '.join(candidates[:8])}.\n"
+            "Скорее всего дата мероприятия — одна из них. Выбери наиболее подходящую."
+        )
+
     prompt = (
-        "Проанализируй текст. Найди дату начала мероприятия в тексте поста и страницы:\n"
-        f"{text}\n\n"
-        f"Если указано несколько дат, выбери первую.\n"
-        f"Если год не указан, используй {current_year}.\n"
-        "Игнорируй время — верни только дату.\n"
-        "Ответ верни строго в формате: ГГГГ-ММ-ДД"
+        f"Сегодняшний год: {current_year}.\n"
+        "ВАЖНО: в тексте даты записаны в формате ДД.ММ (день.месяц), НЕ месяц.день.\n"
+        "Например: 11.04 = 11 апреля, 18.04 = 18 апреля.\n\n"
+        "Задача: найди дату начала мероприятия в тексте ниже.\n"
+        "Если дат несколько — выбери самую раннюю предстоящую (ближайшую к сегодняшнему дню).\n"
+        f"Если год не указан явно, используй {current_year}.\n"
+        "Верни ТОЛЬКО дату в формате ГГГГ-ММ-ДД, без пояснений.\n"
+        f"{candidates_hint}\n\n"
+        f"Текст:\n{text}"
     )
 
-    preferred_models = ["gpt-5.2", "gpt-5.1", "gpt-4.1", "gpt-4o", "gpt-3.5-turbo"]
+    preferred_models = ["gpt-4.1", "gpt-4o", "gpt-3.5-turbo"]
 
     for model_name in preferred_models:
         try:
@@ -245,12 +346,17 @@ def ask_gpt_for_date(text):
                 messages=[{"role": "user", "content": prompt}],
             )
             gpt_reply = response.choices[0].message.content.strip().rstrip(" .")
-            date_part = datetime.strptime(gpt_reply, "%Y-%m-%d").date()
+            # Извлекаем дату из ответа (на случай если GPT добавил лишнее)
+            date_match = re.search(r'\d{4}-\d{2}-\d{2}', gpt_reply)
+            if not date_match:
+                logging.warning(f"⚠️ GPT ({model_name}) вернул неожиданный ответ: {gpt_reply!r}")
+                continue
+            date_part = datetime.strptime(date_match.group(), "%Y-%m-%d").date()
 
             hour = random.randint(3, 23)
             minute = random.choice([0, 15, 30, 45])
             final_dt = datetime.combine(date_part, time(hour=hour, minute=minute))
-            logging.info(f"📅 Распознана дата: {final_dt}")
+            logging.info(f"📅 GPT распознал дату: {final_dt}")
             return final_dt
         except Exception as e:
             logging.warning(f"⚠️ Ошибка с моделью {model_name}: {e}")
@@ -295,18 +401,71 @@ def expand_links_in_text(text: str, entities) -> str:
     parts.append(encoded[prev:].decode("utf-16-le"))
     return "".join(parts)
 
-def extract_date_from_page_or_message(text, url=None):
+
+def extract_date_from_page_or_message(text: str, url: str | None = None) -> datetime | None:
     try:
         page_text = ""
+
         if url:
-            response = requests.get(url, timeout=10)
+            response = requests.get(
+                url, timeout=10,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GoCalendarBot/2.0)"}
+            )
             soup = BeautifulSoup(response.text, 'html.parser')
+
+            # 1. Пробуем JSON-LD Schema.org Event
+            for script in soup.find_all('script', type='application/ld+json'):
+                try:
+                    data = json.loads(script.string or '')
+                    if isinstance(data, list):
+                        data = data[0]
+                    event_types = ('Event', 'SocialEvent', 'MusicEvent', 'TheaterEvent',
+                                   'ExhibitionEvent', 'Festival', 'EducationEvent')
+                    if data.get('@type') in event_types:
+                        start = data.get('startDate', '')
+                        if start:
+                            dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                            logging.info(f"📅 JSON-LD дата: {dt}")
+                            return dt.replace(tzinfo=None)
+                except Exception:
+                    pass
+
+            # 2. og:date / article:published_time
+            for prop in ('event:start_date', 'article:published_time', 'og:updated_time'):
+                meta = soup.find('meta', property=prop)
+                if meta and meta.get('content'):
+                    try:
+                        dt = datetime.fromisoformat(meta['content'].replace('Z', '+00:00'))
+                        logging.info(f"📅 Meta [{prop}] дата: {dt}")
+                        return dt.replace(tzinfo=None)
+                    except Exception:
+                        pass
+
             page_text = soup.get_text(" ", strip=True)
+
         combined_text = (text + "\n" + page_text).strip()
-        return ask_gpt_for_date(combined_text[:3500])
+
+        # 3. Regex: ищем кандидатов дат
+        candidates = extract_date_candidates(combined_text)
+        logging.info(f"📅 Regex-кандидаты дат: {candidates}")
+
+        # Если нашли один однозначный кандидат — не тратим запрос к GPT
+        if len(candidates) == 1:
+            try:
+                d, mo, y = map(int, candidates[0].split('.'))
+                dt = datetime.combine(date_type(y, mo, d), time(hour=12, minute=0))
+                logging.info(f"📅 Единственный кандидат: {dt}")
+                return dt
+            except Exception:
+                pass
+
+        # 4. GPT с кандидатами как подсказками
+        return ask_gpt_for_date(combined_text[:3500], candidates)
+
     except Exception as e:
         logging.warning(f"⚠️ Ошибка при извлечении даты: {e}")
         return None
+
 
 def event_already_exists(description: str) -> bool:
     try:
@@ -325,10 +484,10 @@ def event_already_exists(description: str) -> bool:
         logging.error(f"❌ Ошибка проверки дубликатов: {e}")
     return False
 
-def create_calendar_event(summary, description, start_dt):
+def create_calendar_event(summary: str, description: str, start_dt: datetime) -> bool:
     if event_already_exists(description):
         logging.info("⏭️ Событие уже существует — пропускаем.")
-        return
+        return False
     event = {
         'summary': summary,
         'description': description,
@@ -338,16 +497,20 @@ def create_calendar_event(summary, description, start_dt):
     try:
         calendar_service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
         logging.info(f"✅ Добавлено событие: {summary} — {start_dt}")
+        return True
     except Exception as e:
         logging.error(f"❌ Ошибка при добавлении события: {e}")
+        return False
+
 
 # === /start ===
 @router.message(CommandStart())
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, state: FSMContext):
     sender_id = message.from_user.id if message.from_user else None
     if sender_id not in USER_IDS:
         logging.warning("⛔ Неавторизованный /start от %s", sender_id)
         return
+    await state.clear()
     today = datetime.now().date()
     await message.answer(MENU_BTN_TEXT, reply_markup=main_menu_keyboard())
     await message.answer(
@@ -408,7 +571,94 @@ async def cb_events_choose(callback: CallbackQuery):
     await callback.message.edit_text("🗓 Выбери дату:", reply_markup=calendar_markup)
     await callback.answer()
 
-# === Выбор даты в inline-календаре ===
+# === Подтверждение добавления события ===
+@router.callback_query(F.data == "confirm_event:yes")
+async def cb_confirm_event_yes(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    data = await state.get_data()
+    await state.clear()
+
+    summary = data.get("summary", "")
+    description = data.get("description", "")
+    start_dt_str = data.get("start_dt", "")
+    try:
+        start_dt = datetime.fromisoformat(start_dt_str)
+    except Exception:
+        await callback.message.edit_text("❌ Ошибка: данные события потеряны.")
+        await callback.answer()
+        return
+
+    ok = create_calendar_event(summary, description, start_dt)
+    event_date = start_dt.date()
+    events = get_events_for_date(event_date)
+    if ok:
+        header = f"✅ Добавлено в календарь: {start_dt.strftime('%d.%m.%Y')}\n\n" + format_events_header(events, event_date)
+    else:
+        header = f"⏭️ Событие уже было в календаре: {start_dt.strftime('%d.%m.%Y')}\n\n" + format_events_header(events, event_date)
+    await callback.message.edit_text(header, reply_markup=events_keyboard_with_list(events, event_date))
+    await callback.answer()
+
+@router.callback_query(F.data == "confirm_event:change_date")
+async def cb_confirm_event_change_date(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    await state.set_state(ConfirmEventState.choosing_date)
+    now = datetime.now()
+    calendar_markup = await SimpleCalendar().start_calendar(year=now.year, month=now.month)
+    await callback.message.edit_text("🗓 Выбери правильную дату мероприятия:", reply_markup=calendar_markup)
+    await callback.answer()
+
+@router.callback_query(F.data == "confirm_event:cancel")
+async def cb_confirm_event_cancel(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    await state.clear()
+    await callback.message.edit_text("❌ Добавление отменено.")
+    await callback.answer()
+
+# === Выбор даты в inline-календаре при смене даты события ===
+@router.callback_query(SimpleCalendarCallback.filter(), StateFilter(ConfirmEventState.choosing_date))
+async def cb_calendar_change_date(callback: CallbackQuery, callback_data: SimpleCalendarCallback, state: FSMContext):
+    if callback.from_user.id not in USER_IDS:
+        await callback.answer()
+        return
+    selected, selected_date = await SimpleCalendar().process_selection(callback, callback_data)
+    if not selected:
+        await callback.answer()
+        return
+
+    data = await state.get_data()
+    summary = data.get("summary", "")
+    description = data.get("description", "")
+    start_dt_str = data.get("start_dt", "")
+    try:
+        old_dt = datetime.fromisoformat(start_dt_str)
+        new_dt = old_dt.replace(
+            year=selected_date.year,
+            month=selected_date.month,
+            day=selected_date.day
+        )
+    except Exception:
+        new_dt = datetime.combine(selected_date.date(), time(hour=12, minute=0))
+
+    await state.update_data(start_dt=new_dt.isoformat())
+    await state.set_state(ConfirmEventState.confirming)
+
+    day = new_dt.day
+    month = MONTHS_RU[new_dt.month - 1]
+    await callback.message.edit_text(
+        f"📅 Новая дата: <b>{day} {month} {new_dt.year}</b>\n"
+        f"Название: <b>{summary[:80]}</b>\n\n"
+        "Добавить в календарь?",
+        reply_markup=confirm_event_keyboard()
+    )
+    await callback.answer()
+
+# === Выбор даты в inline-календаре (просмотр мероприятий) ===
 @router.callback_query(SimpleCalendarCallback.filter())
 async def cb_calendar_selected(callback: CallbackQuery, callback_data: SimpleCalendarCallback):
     if callback.from_user.id not in USER_IDS:
@@ -460,10 +710,11 @@ async def cb_event_all(callback: CallbackQuery):
 
 # === Нажатие постоянной кнопки «Главное меню» ===
 @router.message(F.text == MENU_BTN_TEXT)
-async def cmd_menu_button(message: Message):
+async def cmd_menu_button(message: Message, state: FSMContext):
     sender_id = message.from_user.id if message.from_user else None
     if sender_id not in USER_IDS:
         return
+    await state.clear()
     today = datetime.now().date()
     await message.answer(
         "📅 Главное меню — выбери дату или пришли мероприятие:",
@@ -472,7 +723,7 @@ async def cmd_menu_button(message: Message):
 
 # === Обработка входящих сообщений (добавление мероприятий) ===
 @router.message()
-async def handle_message(message: Message):
+async def handle_message(message: Message, state: FSMContext):
     sender_id = message.from_user.id if message.from_user else None
     is_bot = message.from_user.is_bot if message.from_user else False
 
@@ -504,16 +755,13 @@ async def handle_message(message: Message):
 
     # Ссылка на Telegram-статус (story): страница не отдаёт текст
     if url and is_telegram_story_url(url):
-        # Удаляем ссылку из текста, смотрим есть ли что-то ещё
         text_without_url = text.replace(url, "").strip()
         if text_without_url:
-            # Есть текст помимо ссылки — используем его, URL не фетчим
-            logging.info(f"📖 Telegram story URL + текст — используем текст без фетча")
+            logging.info("📖 Telegram story URL + текст — используем текст без фетча")
             url = None
             text = text_without_url
         else:
-            # Только ссылка — текст статуса недоступен через Bot API
-            logging.info(f"📖 Telegram story URL без текста — просим скопировать")
+            logging.info("📖 Telegram story URL без текста — просим скопировать")
             await message.answer(
                 "📖 Ссылка на Telegram-статус — бот не может прочитать его содержимое автоматически.\n\n"
                 "Скопируй текст статуса и пришли его сюда (можно вместе со ссылкой) — добавлю в календарь 📅"
@@ -526,22 +774,32 @@ async def handle_message(message: Message):
 
     dt = extract_date_from_page_or_message(text, url)
     if dt:
-        try:
-            await status.edit_text("📅 Добавляю событие в Google Календарь...")
-            summary_source = text or url or ""
-            summary = (summary_source[:60] + "...") if len(summary_source) > 60 else summary_source
-            entities = message.entities or message.caption_entities or []
-            description = expand_links_in_text(text, entities)
-            create_calendar_event(summary, description, dt)
-            event_date = dt.date()
-            events = get_events_for_date(event_date)
-            header = f"✅ Добавлено в календарь: {dt.strftime('%d.%m.%Y')}\n\n" + format_events_header(events, event_date)
-            await status.edit_text(header, reply_markup=events_keyboard_with_list(events, event_date))
-        except Exception as e:
-            logging.error(f"❌ Ошибка при создании события: {e}")
-            await status.edit_text("❌ Ошибка при добавлении в календарь.")
+        summary_source = text or url or ""
+        summary = (summary_source[:60] + "...") if len(summary_source) > 60 else summary_source
+        entities = message.entities or message.caption_entities or []
+        description = expand_links_in_text(text, entities)
+
+        # Сохраняем в FSM и показываем превью для подтверждения
+        await state.set_state(ConfirmEventState.confirming)
+        await state.update_data(
+            summary=summary,
+            description=description,
+            start_dt=dt.isoformat(),
+        )
+
+        day = dt.day
+        month = MONTHS_RU[dt.month - 1]
+        await status.edit_text(
+            f"📅 Найдена дата: <b>{day} {month} {dt.year}</b>\n"
+            f"Название: <b>{summary[:80]}</b>\n\n"
+            "Добавить в календарь?",
+            reply_markup=confirm_event_keyboard()
+        )
     else:
-        await status.edit_text("📭 Не удалось определить дату мероприятия.")
+        await status.edit_text(
+            "📭 Не удалось определить дату мероприятия.\n\n"
+            "Попробуй прислать текст с чёткой датой, например: «11 апреля» или «11.04.2026»."
+        )
         logging.info("📭 Дата не найдена в сообщении.")
 
 # === Запуск ===
