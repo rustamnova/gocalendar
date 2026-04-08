@@ -2,8 +2,10 @@ venv/
 __pycache__/
 *.pyc
 .env
+credentials.json
 *.log
 log.txt
 error.log
-logs/archive_*.gz
+logs/
+.idea/
 
